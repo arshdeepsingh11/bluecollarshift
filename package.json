@@ -1,19 +1,25 @@
 {
-  "name": "trades-shift-app",
+  "name": "blue-collar",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "node node_modules/vite/bin/vite.js build",
+    "build": "tsc -b && vite build && node scripts/prerender.mjs",
+    "build:fast": "vite build",
+    "typecheck": "tsc -b",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "cd shared && npm test",
+    "start": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1"
+    "react-router-dom": "^7.18.7",
+    "socket.io-client": "^4.8.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
