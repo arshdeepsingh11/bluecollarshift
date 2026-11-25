@@ -1,264 +1,153 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { useEmployer } from '../../hooks/useEmployer';
-import type { PayPeriod } from '../../types';
-
-interface SummaryItemRow {
-  id: string;
-  employee_id: string;
-  hours_worked: number;
-  pay_rate: number;
-  total_pay: number;
-  edited: boolean;
-  employees: { users: { full_name: string } | null } | null;
-}
-
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function periodLengthDays(frequency: string): number {
-  if (frequency === 'weekly') return 7;
-  if (frequency === 'biweekly') return 14;
-  return 30; // monthly, approximate
-}
-
-function toDateStr(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
+import { useState, type FormEvent } from 'react';
+import type { PayPeriod, PayrollRecord } from '@bluecollar/shared';
+import { useApi } from '../../hooks/useApi';
+import { useAuth, useMembership } from '../../hooks/useAuth';
+import { download, errorMessage, post } from '../../lib/api';
+import { fmtDate, fmtHours, fmtMoney, today } from '../../lib/format';
+import { t, type MessageKey } from '../../i18n';
+import { Alert, Badge, Card, Drawer, Empty, Field, Loading, Page } from '../../components/ui';
 
 export default function Pay() {
-  const { employer, loading: employerLoading } = useEmployer();
-  const [periods, setPeriods] = useState<PayPeriod[]>([]);
-  const [itemsByPeriod, setItemsByPeriod] = useState<Record<string, SummaryItemRow[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ itemId: string; value: string } | null>(null);
+  const m = useMembership();
+  const { can } = useAuth();
+  const base = `/companies/${m.companyId}`;
+  const periods = useApi<{ items: PayPeriod[] }>(`${base}/pay-periods`, [m.companyId]);
+  const [periodId, setPeriodId] = useState<string | null>(null);
+  const current = periods.data?.items.find((p) => p.id === periodId) ?? periods.data?.items[0] ?? null;
+  const records = useApi<{ items: PayrollRecord[] }>(current ? `${base}/pay-periods/${current.id}/records` : null, [current?.id]);
+  const [creating, setCreating] = useState(false);
+  const [trace, setTrace] = useState<PayrollRecord | null>(null);
+  const [msg, setMsg] = useState<{ kind: 'error' | 'success' | 'warning'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function loadPeriods(employerId: string) {
-    setLoading(true);
-    const { data } = await supabase
-      .from('pay_periods')
-      .select('*')
-      .eq('employer_id', employerId)
-      .order('period_start', { ascending: false });
-
-    setPeriods((data as PayPeriod[]) ?? []);
-    setLoading(false);
-  }
-
-  async function loadItems(periodId: string) {
-    const { data } = await supabase
-      .from('pay_summary_items')
-      .select('id, employee_id, hours_worked, pay_rate, total_pay, edited, employees(users(full_name))')
-      .eq('pay_period_id', periodId);
-
-    setItemsByPeriod((prev) => ({ ...prev, [periodId]: (data as unknown as SummaryItemRow[]) ?? [] }));
-  }
-
-  useEffect(() => {
-    if (employer) loadPeriods(employer.id);
-  }, [employer]);
-
-  useEffect(() => {
-    periods.forEach((p) => loadItems(p.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periods]);
-
-  async function handleGeneratePeriod() {
-    if (!employer) return;
-    setError(null);
-    setGenerating(true);
-
-    const lengthDays = periodLengthDays(employer.pay_frequency);
-    const lastPeriod = periods[0];
-    const periodStart = lastPeriod
-      ? addDays(new Date(lastPeriod.period_end), 1)
-      : new Date(employer.created_at);
-    const periodEnd = addDays(periodStart, lengthDays - 1);
-    const payDate = addDays(periodEnd, 3);
-
-    const { data: newPeriod, error: periodError } = await supabase
-      .from('pay_periods')
-      .insert({
-        employer_id: employer.id,
-        period_start: toDateStr(periodStart),
-        period_end: toDateStr(periodEnd),
-        pay_date: toDateStr(payDate),
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (periodError || !newPeriod) {
-      setGenerating(false);
-      setError(periodError?.message ?? 'Could not create pay period.');
-      return;
+  async function act(path: string) {
+    if (!current) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await post<{ warnings?: { fullName: string; message: string }[] }>(`${base}/pay-periods/${current.id}/${path}`);
+      if (r?.warnings?.length) setMsg({ kind: 'warning', text: r.warnings.map((w) => `${w.fullName}: ${w.message}`).join(' · ') });
+      await periods.reload();
+      await records.reload();
+    } catch (e) {
+      setMsg({ kind: 'error', text: errorMessage(e) });
+    } finally {
+      setBusy(false);
     }
-
-    const { data: employees } = await supabase
-      .from('employees')
-      .select('id, pay_rate')
-      .eq('employer_id', employer.id)
-      .eq('active', true);
-
-    for (const emp of employees ?? []) {
-      const { data: shifts } = await supabase
-        .from('shifts')
-        .select('actual_start, actual_end, site_id, sites!inner(employer_id)')
-        .eq('employee_id', emp.id)
-        .eq('status', 'completed')
-        .gte('actual_start', periodStart.toISOString())
-        .lte('actual_start', addDays(periodEnd, 1).toISOString());
-
-      let totalHours = 0;
-      for (const s of shifts ?? []) {
-        if (s.actual_start && s.actual_end) {
-          totalHours +=
-            (new Date(s.actual_end).getTime() - new Date(s.actual_start).getTime()) / (1000 * 60 * 60);
-        }
-      }
-
-      await supabase.from('pay_summary_items').insert({
-        pay_period_id: newPeriod.id,
-        employee_id: emp.id,
-        hours_worked: Math.round(totalHours * 100) / 100,
-        pay_rate: emp.pay_rate,
-      });
-    }
-
-    setGenerating(false);
-    loadPeriods(employer.id);
   }
-
-  async function handleMarkPaid(periodId: string) {
-    await supabase.from('pay_periods').update({ status: 'paid' }).eq('id', periodId);
-    if (employer) loadPeriods(employer.id);
-  }
-
-  async function handleSaveEdit(itemId: string, periodId: string) {
-    if (!editing) return;
-    const hours = parseFloat(editing.value);
-    if (isNaN(hours) || hours < 0) {
-      setError('Please enter a valid number of hours.');
-      return;
-    }
-
-    await supabase
-      .from('pay_summary_items')
-      .update({ hours_worked: hours, edited: true })
-      .eq('id', itemId);
-
-    setEditing(null);
-    loadItems(periodId);
-  }
-
-  if (employerLoading) return null;
 
   return (
-    <>
-      <div className="dashboard-header">
-        <h1 className="dashboard-title">Pay</h1>
-        <p className="dashboard-subtitle">
-          Gross pay summaries (before tax deductions). Pay frequency: {employer?.pay_frequency}.
-        </p>
-      </div>
-
-      <div className="dashboard-card">
-        {error && <div className="dashboard-error">{error}</div>}
-        <button className="dashboard-button" disabled={generating} onClick={handleGeneratePeriod}>
-          {generating ? 'Generating...' : 'Generate next pay period'}
-        </button>
-      </div>
-
-      <div className="dashboard-card">
-        <h3 style={{ marginTop: 0, color: '#3f4162' }}>Pay periods</h3>
-        {loading ? (
-          <div className="dashboard-empty">Loading...</div>
-        ) : periods.length === 0 ? (
-          <div className="dashboard-empty">No pay periods yet — generate your first one above.</div>
-        ) : (
-          periods.map((period) => {
-            const items = itemsByPeriod[period.id] ?? [];
-            const periodTotal = items.reduce((sum, i) => sum + Number(i.total_pay), 0);
-
-            return (
-              <div key={period.id} style={{ marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid rgba(163,177,198,0.25)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div>
-                    <div className="list-row-title">
-                      {period.period_start} → {period.period_end}
-                    </div>
-                    <div className="list-row-subtitle">Pay date: {period.pay_date}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <span className={`status-pill ${period.status === 'paid' ? 'active' : 'pending'}`}>
-                      {period.status === 'paid' ? 'Paid' : 'Pending'}
-                    </span>
-                    {period.status !== 'paid' && (
-                      <button className="dashboard-button" style={{ padding: '6px 14px', fontSize: 12 }} onClick={() => handleMarkPaid(period.id)}>
-                        Mark as paid
-                      </button>
-                    )}
-                  </div>
+    <Page title={t('payroll.title')} actions={can('payroll.manage') && <button className="bc-btn" onClick={() => setCreating(true)}>{t('payroll.new_period')}</button>}>
+      <Alert kind="info">{t('payroll.disclaimer')}</Alert>
+      {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
+      {periods.loading && !periods.data ? <Loading /> : !periods.data?.items.length ? <Card><Empty title={t('payroll.none')} /></Card> : (
+        <>
+          <Card>
+            <div className="bc-row">
+              <Field label={t('payroll.title')} htmlFor="pp">
+                <select id="pp" value={current?.id} onChange={(e) => setPeriodId(e.target.value)}>
+                  {periods.data.items.map((p) => <option key={p.id} value={p.id}>{fmtDate(p.startsOn)} – {fmtDate(p.endsOn)} ({t(`payroll.status_${p.status}` as MessageKey)})</option>)}
+                </select>
+              </Field>
+              {current && can('payroll.manage') && (
+                <div className="bc-actions" style={{ marginBottom: 16 }}>
+                  {(current.status === 'open' || current.status === 'calculated') && <button className="bc-btn secondary" disabled={busy} onClick={() => void act('calculate')}>{current.status === 'open' ? t('payroll.calculate') : t('payroll.recalculate')}</button>}
+                  {current.status === 'calculated' && <button className="bc-btn" disabled={busy} onClick={() => void act('approve')}>{t('payroll.approve')}</button>}
+                  {current.status === 'approved' && <button className="bc-btn" disabled={busy} onClick={() => window.confirm(t('payroll.mark_paid') + '?') && void act('mark-paid')}>{t('payroll.mark_paid')}</button>}
                 </div>
-
-                {items.map((item) => (
-                  <div className="list-row" key={item.id}>
-                    <div>
-                      <div className="list-row-title">{item.employees?.users?.full_name ?? 'Unknown'}</div>
-                      <div className="list-row-subtitle">
-                        {editing?.itemId === item.id ? (
-                          <>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editing.value}
-                              onChange={(e) => setEditing({ itemId: item.id, value: e.target.value })}
-                              style={{ width: 80, marginRight: 8 }}
-                            />
-                            hrs × ${item.pay_rate}/hr
-                          </>
-                        ) : (
-                          <>
-                            {item.hours_worked} hrs × ${item.pay_rate}/hr{item.edited ? ' (edited)' : ''}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <span className="status-pill active">${Number(item.total_pay).toFixed(2)}</span>
-                      {period.status !== 'paid' && (
-                        editing?.itemId === item.id ? (
-                          <button className="dashboard-button" style={{ padding: '6px 14px', fontSize: 12 }} onClick={() => handleSaveEdit(item.id, period.id)}>
-                            Save
-                          </button>
-                        ) : (
-                          <button
-                            className="dashboard-button"
-                            style={{ padding: '6px 14px', fontSize: 12 }}
-                            onClick={() => setEditing({ itemId: item.id, value: String(item.hours_worked) })}
-                          >
-                            Edit
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                <div className="invite-code-box" style={{ marginTop: 12 }}>
-                  Period total:
-                  <div className="invite-code-value">${periodTotal.toFixed(2)}</div>
-                </div>
+              )}
+              {current && <button className="bc-btn secondary" style={{ marginBottom: 16 }} onClick={() => void download(`${base}/pay-periods/${current.id}/export.csv`, `payroll-${current.startsOn}.csv`)}>{t('common.export_csv')}</button>}
+            </div>
+            {current && (
+              <div className="bc-grid cols-4">
+                <div className="bc-stat"><span>{t('payroll.pay_date')}</span><strong style={{ fontSize: 20 }}>{fmtDate(current.payDate)}</strong></div>
+                <div className="bc-stat"><span>{t('payroll.regular')}</span><strong>{fmtHours(current.totals.regularMinutes)}h</strong></div>
+                <div className="bc-stat"><span>{t('payroll.overtime')}</span><strong>{fmtHours(current.totals.overtimeMinutes)}h</strong></div>
+                <div className="bc-stat"><span>{t('payroll.gross')}</span><strong>{fmtMoney(current.totals.grossCents)}</strong></div>
               </div>
-            );
-          })
-        )}
+            )}
+          </Card>
+          <Card>
+            {records.loading && !records.data ? <Loading /> : !records.data?.items.length ? <Empty title={t('payroll.calculate')} /> : (
+              <div className="bc-table-wrap">
+                <table className="bc-table">
+                  <thead><tr><th>{t('ts.employee')}</th><th className="num">{t('payroll.regular')}</th><th className="num">{t('payroll.overtime')}</th><th className="num">{t('payroll.rate')}</th><th className="num">{t('payroll.gross')}</th><th>{t('common.status')}</th><th /></tr></thead>
+                  <tbody>
+                    {records.data.items.map((r) => (
+                      <tr key={r.id}>
+                        <td><strong>{r.employeeName}</strong>{r.pendingSessions > 0 && <div><Badge kind="warning">{r.pendingSessions} {t('payroll.pending_ts')}</Badge></div>}</td>
+                        <td className="num">{fmtHours(r.regularMinutes)}</td>
+                        <td className="num">{fmtHours(r.overtimeMinutes)}</td>
+                        <td className="num">{fmtMoney(r.hourlyRateCents)}</td>
+                        <td className="num"><strong>{fmtMoney(r.grossTotalCents)}</strong></td>
+                        <td><Badge kind={r.status === 'paid' ? 'success' : r.status === 'approved' ? 'info' : undefined}>{r.status}</Badge></td>
+                        <td className="num"><button className="bc-btn ghost small" onClick={() => setTrace(r)}>{t('payroll.trace')}</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+      {creating && <NewPeriod base={base} onClose={() => setCreating(false)} onDone={(id) => { setCreating(false); setPeriodId(id); void periods.reload(); }} />}
+      {trace && <TraceDrawer record={trace} onClose={() => setTrace(null)} />}
+    </Page>
+  );
+}
+
+function NewPeriod({ base, onClose, onDone }: { base: string; onClose: () => void; onDone: (id: string) => void }) {
+  const [f, setF] = useState({ startsOn: today(-13), endsOn: today(), payDate: today(5) });
+  const [error, setError] = useState<string | null>(null);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    try {
+      const r = await post<{ id: string }>(`${base}/pay-periods`, f);
+      onDone(r.id);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+  return (
+    <Drawer title={t('payroll.new_period')} onClose={onClose} center>
+      {error && <Alert kind="error">{error}</Alert>}
+      <form onSubmit={submit}>
+        <Field label={t('common.from')} htmlFor="pfrom"><input id="pfrom" type="date" required value={f.startsOn} onChange={(e) => setF({ ...f, startsOn: e.target.value })} /></Field>
+        <Field label={t('common.to')} htmlFor="pto"><input id="pto" type="date" required value={f.endsOn} onChange={(e) => setF({ ...f, endsOn: e.target.value })} /></Field>
+        <Field label={t('payroll.pay_date')} htmlFor="pdate"><input id="pdate" type="date" required value={f.payDate} onChange={(e) => setF({ ...f, payDate: e.target.value })} /></Field>
+        <div className="bc-actions"><button className="bc-btn">{t('common.create')}</button></div>
+      </form>
+    </Drawer>
+  );
+}
+
+interface Trace {
+  days: { date: string; workedMinutes: number; dailyOvertimeMinutes: number }[];
+  blocks: { start: string; end: string; workedMinutes: number; overtimeMinutes: number; rule: string }[];
+  warnings: { message: string }[];
+  ruleProfile: string;
+}
+
+export function TraceDrawer({ record, onClose }: { record: PayrollRecord; onClose: () => void }) {
+  const tr = record.trace as Trace;
+  return (
+    <Drawer title={`${record.employeeName} · ${t('payroll.trace')}`} onClose={onClose}>
+      <p className="bc-muted">{tr.ruleProfile} · {fmtMoney(record.hourlyRateCents)}/h · OT × {record.overtimeMultiplier}</p>
+      {tr.warnings?.map((w, i) => <Alert key={i} kind="warning">{w.message}</Alert>)}
+      <table className="bc-table">
+        <thead><tr><th>{t('common.date')}</th><th className="num">{t('common.hours')}</th><th className="num">Daily OT</th></tr></thead>
+        <tbody>{tr.days.map((d) => <tr key={d.date}><td>{fmtDate(d.date)}</td><td className="num">{fmtHours(d.workedMinutes)}</td><td className="num">{fmtHours(d.dailyOvertimeMinutes)}</td></tr>)}</tbody>
+      </table>
+      <h3 style={{ fontSize: 16, margin: '16px 0 8px' }}>Overtime</h3>
+      <ul className="bc-timeline">
+        {tr.blocks.map((b) => <li key={b.start}><strong>{fmtDate(b.start)} – {fmtDate(b.end)}</strong>: {fmtHours(b.workedMinutes)}h worked, {fmtHours(b.overtimeMinutes)}h OT<div className="bc-muted">{b.rule}</div></li>)}
+      </ul>
+      <div className="bc-compare" style={{ marginTop: 12 }}>
+        <div><h4>{t('payroll.regular')}</h4>{fmtHours(record.regularMinutes)}h · {fmtMoney(record.grossRegularCents)}</div>
+        <div><h4>{t('payroll.overtime')}</h4>{fmtHours(record.overtimeMinutes)}h · {fmtMoney(record.grossOvertimeCents)}</div>
       </div>
-    </>
+      <p><strong>{t('payroll.gross')}: {fmtMoney(record.grossTotalCents)}</strong></p>
+    </Drawer>
   );
 }
