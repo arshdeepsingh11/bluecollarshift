@@ -1,298 +1,151 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { useEmployer } from '../../hooks/useEmployer';
-import { useAuth } from '../../hooks/useAuth';
-
-interface SiteOption {
-  id: string;
-  name: string;
-}
-
-interface EmployeeOption {
-  id: string;
-  users: { full_name: string } | null;
-}
-
-interface ShiftRow {
-  id: string;
-  scheduled_start: string;
-  scheduled_end: string;
-  status: string;
-  actual_start: string | null;
-  sites: { name: string } | null;
-  employees: { users: { full_name: string } | null } | null;
-}
-
-function minutesLate(scheduledStart: string): number {
-  const diffMs = Date.now() - new Date(scheduledStart).getTime();
-  return Math.floor(diffMs / 60000);
-}
-
-function toLocalDateTimeInputValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+import { useMemo, useState, type FormEvent } from 'react';
+import type { JobSite, Member, Shift } from '@bluecollar/shared';
+import { useApi } from '../../hooks/useApi';
+import { useAuth, useMembership } from '../../hooks/useAuth';
+import { ApiError, errorMessage, patch, post } from '../../lib/api';
+import { fmtTime, fmtWeekday, fromLocalInput, startOfWeek, toLocalInput } from '../../lib/format';
+import { t } from '../../i18n';
+import { Alert, Card, Drawer, Field, Loading, Page } from '../../components/ui';
 
 export default function Shifts() {
-  const { employer, loading: employerLoading } = useEmployer();
-  const { profile } = useAuth();
-
-  const [sites, setSites] = useState<SiteOption[]>([]);
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  const [shifts, setShifts] = useState<ShiftRow[]>([]);
-  const [listLoading, setListLoading] = useState(true);
-
+  const m = useMembership();
+  const { can } = useAuth();
+  const base = `/companies/${m.companyId}`;
+  const [weekStart, setWeekStart] = useState(() => startOfWeek());
+  const weekEnd = useMemo(() => new Date(weekStart.getTime() + 7 * 86400_000), [weekStart]);
   const [siteId, setSiteId] = useState('');
-  const [employeeId, setEmployeeId] = useState('');
-  const [scheduledStart, setScheduledStart] = useState('');
-  const [scheduledEnd, setScheduledEnd] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const shifts = useApi<{ items: Shift[] }>(`${base}/shifts?from=${weekStart.toISOString()}&to=${weekEnd.toISOString()}${siteId ? `&siteId=${siteId}` : ''}`, [m.companyId, weekStart, siteId]);
+  const sites = useApi<{ items: JobSite[] }>(`${base}/sites`, [m.companyId]);
+  const members = useApi<{ items: Member[] }>(can('members.view') ? `${base}/members` : null, [m.companyId]);
+  const [editing, setEditing] = useState<Shift | 'new' | null>(null);
 
-  const [acceptingShiftId, setAcceptingShiftId] = useState<string | null>(null);
-  const [acceptTime, setAcceptTime] = useState('');
-  const [accepting, setAccepting] = useState(false);
-
-  async function loadAll(employerId: string) {
-    setListLoading(true);
-
-    const { data: siteData } = await supabase
-      .from('sites')
-      .select('id, name')
-      .eq('employer_id', employerId);
-
-    const { data: employeeData } = await supabase
-      .from('employees')
-      .select('id, users(full_name)')
-      .eq('employer_id', employerId);
-
-    const { data: shiftData } = await supabase
-      .from('shifts')
-      .select('id, scheduled_start, scheduled_end, status, actual_start, sites!inner(name, employer_id), employees(users(full_name))')
-      .eq('sites.employer_id', employerId)
-      .order('scheduled_start', { ascending: false });
-
-    setSites((siteData as SiteOption[]) ?? []);
-    setEmployees((employeeData as unknown as EmployeeOption[]) ?? []);
-    setShifts((shiftData as unknown as ShiftRow[]) ?? []);
-    setListLoading(false);
-  }
-
-  useEffect(() => {
-    if (employer) {
-      loadAll(employer.id);
-    }
-  }, [employer]);
-
-  async function handleCreateShift(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (!siteId || !employeeId || !scheduledStart || !scheduledEnd) {
-      setError('Please fill in all fields.');
-      return;
-    }
-
-    setSubmitting(true);
-
-    const { error: insertError } = await supabase.from('shifts').insert({
-      site_id: siteId,
-      employee_id: employeeId,
-      scheduled_start: new Date(scheduledStart).toISOString(),
-      scheduled_end: new Date(scheduledEnd).toISOString(),
-      status: 'scheduled',
-    });
-
-    setSubmitting(false);
-
-    if (insertError) {
-      setError(insertError.message);
-      return;
-    }
-
-    setSiteId('');
-    setEmployeeId('');
-    setScheduledStart('');
-    setScheduledEnd('');
-    if (employer) loadAll(employer.id);
-  }
-
-  function startAccepting(shift: ShiftRow) {
-    setAcceptingShiftId(shift.id);
-    setAcceptTime(toLocalDateTimeInputValue(new Date()));
-  }
-
-  async function confirmAccept(shiftId: string) {
-    if (!acceptTime || !profile) return;
-    setAccepting(true);
-
-    const { error: updateError } = await supabase
-      .from('shifts')
-      .update({
-        status: 'employer_accepted',
-        actual_start: new Date(acceptTime).toISOString(),
-        accepted_by_employer_at: new Date().toISOString(),
-        accepted_by_user_id: profile.id,
-      })
-      .eq('id', shiftId);
-
-    setAccepting(false);
-
-    if (updateError) {
-      setError(updateError.message);
-      return;
-    }
-
-    setAcceptingShiftId(null);
-    if (employer) loadAll(employer.id);
-  }
-
-  if (employerLoading) return null;
+  const days = Array.from({ length: 7 }, (_, i) => new Date(weekStart.getTime() + i * 86400_000));
+  const todayKey = new Date().toDateString();
 
   return (
-    <>
-      <div className="dashboard-header">
-        <h1 className="dashboard-title">Shifts</h1>
-        <p className="dashboard-subtitle">Create and assign shifts to your team.</p>
-      </div>
-
-      <div className="dashboard-card">
-        <h3 style={{ marginTop: 0, color: '#3f4162' }}>Create a shift</h3>
-
-        {sites.length === 0 || employees.length === 0 ? (
-          <div className="dashboard-empty">
-            You need at least one site and one employee before creating a shift.
-          </div>
-        ) : (
-          <form onSubmit={handleCreateShift}>
-            <div className="dashboard-field">
-              <label>Site</label>
-              <select value={siteId} onChange={(e) => setSiteId(e.target.value)} required>
-                <option value="">Select a site</option>
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="dashboard-field">
-              <label>Employee</label>
-              <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required>
-                <option value="">Select an employee</option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>{emp.users?.full_name ?? 'Unknown'}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="dashboard-field">
-              <label>Scheduled start</label>
-              <input
-                type="datetime-local"
-                value={scheduledStart}
-                onChange={(e) => setScheduledStart(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="dashboard-field">
-              <label>Scheduled end</label>
-              <input
-                type="datetime-local"
-                value={scheduledEnd}
-                onChange={(e) => setScheduledEnd(e.target.value)}
-                required
-              />
-            </div>
-
-            {error && <div className="dashboard-error">{error}</div>}
-
-            <button className="dashboard-button" type="submit" disabled={submitting}>
-              {submitting ? 'Creating...' : 'Create shift'}
-            </button>
-          </form>
-        )}
-      </div>
-
-      <div className="dashboard-card">
-        <h3 style={{ marginTop: 0, color: '#3f4162' }}>All shifts</h3>
-        {listLoading ? (
-          <div className="dashboard-empty">Loading...</div>
-        ) : shifts.length === 0 ? (
-          <div className="dashboard-empty">No shifts yet — create your first one above.</div>
-        ) : (
-          shifts.map((shift) => {
-            const late = shift.status === 'scheduled' ? minutesLate(shift.scheduled_start) : null;
-            const isLate = late !== null && late > 0;
-
-            return (
-              <div className="list-row" key={shift.id} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div className="list-row-title">
-                      {shift.employees?.users?.full_name ?? 'Unknown'} — {shift.sites?.name ?? 'Unknown site'}
+    <Page title={t('schedule.title')} actions={
+      <>
+        <button className="bc-btn secondary small" onClick={() => setWeekStart(new Date(weekStart.getTime() - 7 * 86400_000))}>‹ {t('schedule.prev_week')}</button>
+        <button className="bc-btn secondary small" onClick={() => setWeekStart(startOfWeek())}>{t('schedule.this_week')}</button>
+        <button className="bc-btn secondary small" onClick={() => setWeekStart(new Date(weekStart.getTime() + 7 * 86400_000))}>{t('schedule.next_week')} ›</button>
+        <select className="bc-input" style={{ width: 'auto' }} value={siteId} onChange={(e) => setSiteId(e.target.value)} aria-label={t('schedule.site')}>
+          <option value="">{t('common.all')}</option>
+          {sites.data?.items.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        {can('shifts.manage') && <button className="bc-btn" onClick={() => setEditing('new')}>{t('schedule.new_shift')}</button>}
+      </>
+    }>
+      {shifts.error && <Alert kind="error">{shifts.error}</Alert>}
+      <Card>
+        {shifts.loading && !shifts.data ? <Loading /> : (
+          <div className="bc-week">
+            {days.map((d) => {
+              const items = (shifts.data?.items ?? []).filter((s) => new Date(s.startsAt).toDateString() === d.toDateString());
+              return (
+                <div key={d.toISOString()} className={`bc-day ${d.toDateString() === todayKey ? 'today' : ''}`}>
+                  <h4>{fmtWeekday(d.toISOString())}</h4>
+                  {items.map((s) => (
+                    <div key={s.id} className={`bc-shift-chip ${s.status}`} role="button" tabIndex={0} onClick={() => can('shifts.manage') && setEditing(s)} onKeyDown={(e) => e.key === 'Enter' && can('shifts.manage') && setEditing(s)}>
+                      <strong>{fmtTime(s.startsAt)}–{fmtTime(s.endsAt)}</strong>
+                      <div>{s.siteName}</div>
+                      <div className="bc-muted">{s.assignees.map((a) => a.fullName).join(', ')}</div>
                     </div>
-                    <div className="list-row-subtitle">
-                      {new Date(shift.scheduled_start).toLocaleString()} → {new Date(shift.scheduled_end).toLocaleString()}
-                    </div>
-                  </div>
-
-                  {shift.status === 'completed' && <span className="status-pill active">Completed</span>}
-                  {shift.status === 'active' && <span className="status-pill active">In progress</span>}
-                  {shift.status === 'employer_accepted' && <span className="status-pill active">Accepted (late)</span>}
-                  {shift.status === 'scheduled' && !isLate && <span className="status-pill pending">Scheduled</span>}
-                  {shift.status === 'scheduled' && isLate && (
-                    <span className="status-pill pending">{late} min late</span>
-                  )}
+                  ))}
                 </div>
-
-                {shift.status === 'scheduled' && isLate && acceptingShiftId !== shift.id && (
-                  <button
-                    className="dashboard-button"
-                    style={{ marginTop: 10, alignSelf: 'flex-start' }}
-                    onClick={() => startAccepting(shift)}
-                  >
-                    Accept late shift
-                  </button>
-                )}
-
-                {acceptingShiftId === shift.id && (
-                  <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-                    <div className="dashboard-field" style={{ marginBottom: 0 }}>
-                      <label>Start time</label>
-                      <input
-                        type="datetime-local"
-                        value={acceptTime}
-                        onChange={(e) => setAcceptTime(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      className="dashboard-button"
-                      disabled={accepting}
-                      onClick={() => confirmAccept(shift.id)}
-                    >
-                      {accepting ? 'Saving...' : 'Confirm'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAcceptingShiftId(null)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#5b5d78',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
-      </div>
-    </>
+      </Card>
+      {editing && (
+        <ShiftDrawer base={base} shift={editing === 'new' ? null : editing} sites={sites.data?.items.filter((s) => s.status === 'active') ?? []}
+          people={(members.data?.items ?? []).filter((p) => p.status === 'active' && p.role === 'employee')}
+          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void shifts.reload(); }} />
+      )}
+    </Page>
+  );
+}
+
+function ShiftDrawer({ base, shift, sites, people, onClose, onSaved }: { base: string; shift: Shift | null; sites: JobSite[]; people: Member[]; onClose: () => void; onSaved: () => void }) {
+  const start = new Date();
+  start.setHours(7, 0, 0, 0);
+  start.setDate(start.getDate() + 1);
+  const [f, setF] = useState({
+    siteId: shift?.siteId ?? sites[0]?.id ?? '',
+    startsAt: toLocalInput(shift?.startsAt ?? start.toISOString()),
+    endsAt: toLocalInput(shift?.endsAt ?? new Date(start.getTime() + 8.5 * 3600_000).toISOString()),
+    breakMinutes: String(shift?.breakMinutes ?? 30),
+    instructions: shift?.instructions ?? '',
+    membershipIds: shift?.assignees.map((a) => a.membershipId) ?? [],
+    repeatWeeks: '0',
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent, status?: 'cancelled') {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      if (shift) {
+        await patch(`${base}/shifts/${shift.id}`, {
+          version: shift.version, siteId: f.siteId, startsAt: fromLocalInput(f.startsAt), endsAt: fromLocalInput(f.endsAt),
+          breakMinutes: Number(f.breakMinutes), instructions: f.instructions || null, membershipIds: f.membershipIds, ...(status ? { status } : {}),
+        });
+        onSaved();
+      } else {
+        const r = await post<{ warnings: unknown[] }>(`${base}/shifts`, {
+          siteId: f.siteId, startsAt: fromLocalInput(f.startsAt), endsAt: fromLocalInput(f.endsAt), breakMinutes: Number(f.breakMinutes),
+          instructions: f.instructions || null, membershipIds: f.membershipIds, repeatWeeks: Number(f.repeatWeeks),
+        });
+        if (r.warnings?.length) {
+          setWarning(t('schedule.conflicts'));
+          setTimeout(onSaved, 1500);
+        } else onSaved();
+      }
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 409 ? t('schedule.changed_elsewhere') : errorMessage(err));
+      if (err instanceof ApiError && err.status === 409) setTimeout(onSaved, 1200);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Drawer title={shift ? `${shift.siteName} · ${fmtWeekday(shift.startsAt)}` : t('schedule.new_shift')} onClose={onClose}>
+      {error && <Alert kind="error">{error}</Alert>}
+      {warning && <Alert kind="warning">{warning}</Alert>}
+      <form onSubmit={submit}>
+        <Field label={t('schedule.site')} htmlFor="ssite">
+          <select id="ssite" required value={f.siteId} onChange={(e) => setF({ ...f, siteId: e.target.value })}>
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
+        <div className="bc-row">
+          <Field label={t('schedule.start')} htmlFor="sstart"><input id="sstart" type="datetime-local" required value={f.startsAt} onChange={(e) => setF({ ...f, startsAt: e.target.value })} /></Field>
+          <Field label={t('schedule.end')} htmlFor="send"><input id="send" type="datetime-local" required value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} /></Field>
+        </div>
+        <div className="bc-row">
+          <Field label={t('schedule.break')} htmlFor="sbreak"><input id="sbreak" type="number" min={0} max={240} value={f.breakMinutes} onChange={(e) => setF({ ...f, breakMinutes: e.target.value })} /></Field>
+          {!shift && <Field label={t('schedule.repeat')} htmlFor="srep"><input id="srep" type="number" min={0} max={12} value={f.repeatWeeks} onChange={(e) => setF({ ...f, repeatWeeks: e.target.value })} /></Field>}
+        </div>
+        <Field label={t('schedule.instructions')} htmlFor="sinst"><textarea id="sinst" maxLength={2000} value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} /></Field>
+        <Field label={t('schedule.assign')}>
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {people.map((p) => (
+              <label key={p.membershipId} className="bc-check">
+                <input type="checkbox" checked={f.membershipIds.includes(p.membershipId)} onChange={(e) => setF({ ...f, membershipIds: e.target.checked ? [...f.membershipIds, p.membershipId] : f.membershipIds.filter((x) => x !== p.membershipId) })} />
+                {p.fullName}
+              </label>
+            ))}
+          </div>
+        </Field>
+        <div className="bc-actions">
+          {shift && shift.status === 'scheduled' && <button type="button" className="bc-btn danger" disabled={busy} onClick={(e) => void submit(e as unknown as FormEvent, 'cancelled')}>{t('schedule.cancel_shift')}</button>}
+          <button className="bc-btn" disabled={busy || !f.membershipIds.length || !f.siteId}>{busy ? t('common.saving') : t('common.save')}</button>
+        </div>
+      </form>
+    </Drawer>
   );
 }
