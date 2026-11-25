@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups: { minor-and-patch: { update-types: [minor, patch] } }
+  - package-ecosystem: npm
+    directory: /server
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups: { minor-and-patch: { update-types: [minor, patch] } }
+  - package-ecosystem: npm
+    directory: /shared
+    schedule: { interval: weekly }
+  # Expo SDK versions must move together (npx expo install --fix) — security updates only.
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: /server
+    schedule: { interval: monthly }
