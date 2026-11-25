@@ -40,7 +40,7 @@ begin
     where n.nspname = 'public'
       and p.proname in ('auth_role', 'auth_employer_id', 'auth_employee_id', 'get_invite_by_code',
                         'hash_security_answer', 'get_security_questions_by_email',
-                        'verify_single_security_answer')
+                        'verify_single_security_answer', 'verify_security_answers', 'log_payroll_change')
   loop
     execute format('alter function %s set schema legacy', f.sig);
     raise notice 'moved function % -> legacy', f.proname;
