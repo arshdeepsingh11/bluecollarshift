@@ -1,0 +1,6 @@
+# Blue Collar — public website only. The app and admin subdomains serve their own robots.txt (Disallow: /).
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /admin/
+Sitemap: https://bluecollarshift.com/sitemap.xml

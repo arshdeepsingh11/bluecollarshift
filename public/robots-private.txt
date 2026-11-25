@@ -1,0 +1,3 @@
+# Served for app.bluecollarshift.com and admin.bluecollarshift.com (see vercel.json)
+User-agent: *
+Disallow: /

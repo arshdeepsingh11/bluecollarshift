@@ -1,0 +1,17 @@
+# Blue Collar
+
+> Blue Collar is a workforce management platform for construction and skilled-trade companies (electrical, plumbing, HVAC) in Alberta, Canada. It provides crew scheduling, GPS-verified clock-in/out that works offline, transparent timesheet adjustments, Alberta overtime rules (8/44), payroll preparation (gross pay estimates, CSV export), and built-in messaging. Employer web dashboard plus iPhone and Android employee apps.
+
+Note: llms.txt is an emerging convention; it is provided for AI assistants and is not a ranking guarantee.
+
+## Pages
+- [Home](https://bluecollarshift.com/): overview and sign-up
+- [Features](https://bluecollarshift.com/features): full feature list
+- [Pricing](https://bluecollarshift.com/pricing): free during launch
+- [Security](https://bluecollarshift.com/security): security practices and vulnerability disclosure
+- [Privacy](https://bluecollarshift.com/privacy): privacy policy
+- [Contact](https://bluecollarshift.com/contact): sales, support and security contacts
+
+## Facts
+- Payroll output is a gross-pay estimate; Blue Collar does not calculate statutory deductions or remit payroll.
+- Location is captured only at clock events; no continuous tracking.
