@@ -1,63 +1,75 @@
-import { type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { useEffect, useState, type ReactNode } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { onConnectionChange, getSocket } from '../lib/realtime';
+import { t } from '../i18n';
 import '../styles/dashboard.css';
 
-interface NavItem {
+export interface NavItem {
   label: string;
   to: string;
+  end?: boolean;
+  count?: number;
 }
 
-interface DashboardLayoutProps {
-  logoText: string;
-  navItems: NavItem[];
-  children: ReactNode;
-}
-
-export function DashboardLayout({ logoText, navItems, children }: DashboardLayoutProps) {
-  const navigate = useNavigate();
-  const { profile } = useAuth();
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    navigate('/login');
-  }
+export function DashboardLayout({ subtitle, navItems, children, showCompanySwitch = true }: { subtitle: string; navItems: NavItem[]; children: ReactNode; showCompanySwitch?: boolean }) {
+  const { me, membership, selectCompany, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [online, setOnline] = useState(false);
+  const loc = useLocation();
+  useEffect(() => setOpen(false), [loc.pathname]);
+  useEffect(() => {
+    getSocket();
+    return onConnectionChange(setOnline);
+  }, []);
 
   return (
-    <div className="dashboard-shell">
-      <aside className="dashboard-sidebar">
-        <div className="dashboard-logo">{logoText}</div>
-
-        <nav className="dashboard-nav">
+    <div className="bc-shell">
+      <aside className={`bc-sidebar ${open ? 'open' : ''}`} aria-label="Main navigation">
+        <a className="bc-sidebar-brand" href="/">
+          <img src="/brand/logo-white.svg" alt="" width={40} height={40} />
+          <div>
+            <strong>{t('app.name')}</strong>
+            <span>{subtitle}</span>
+          </div>
+        </a>
+        {showCompanySwitch && me && me.memberships.length > 1 && (
+          <div className="bc-company-select">
+            <label className="sr-only" htmlFor="company-switch">Company</label>
+            <select id="company-switch" value={membership?.companyId} onChange={(e) => selectCompany(e.target.value)}>
+              {me.memberships.map((m) => (
+                <option key={m.companyId} value={m.companyId}>{m.companyName}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <nav className="bc-nav">
           {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to.split('/').length <= 2}
-              className={({ isActive }) =>
-                isActive ? 'dashboard-nav-link active' : 'dashboard-nav-link'
-              }
-            >
-              {item.label}
+            <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
+              <span>{item.label}</span>
+              {!!item.count && <span className="bc-count">{item.count}</span>}
             </NavLink>
           ))}
         </nav>
-
-        <div className="dashboard-sidebar-footer">
-          {profile && (
-            <div className="dashboard-user">
-              <strong>{profile.full_name}</strong>
-              {profile.email}
-            </div>
+        <div className="bc-sidebar-footer">
+          {me && (
+            <>
+              <strong>{me.fullName || me.email}</strong>
+              <span>{membership ? `${membership.companyName} · ${t(`role.${membership.role}`)}` : me.email}</span>
+            </>
           )}
-          <button className="dashboard-logout" onClick={handleLogout}>
-            Log out
-          </button>
+          <span className={`bc-connection ${online ? 'online' : ''}`} style={{ display: 'flex', marginTop: 8, color: '#9fbccb' }}>
+            {online ? t('common.online') : t('common.offline')}
+          </span>
+          <button className="bc-btn secondary small" onClick={() => void signOut()}>{t('common.sign_out')}</button>
         </div>
       </aside>
-
-      <main className="dashboard-main">{children}</main>
+      <main className="bc-main" id="main">
+        <button className="bc-btn secondary small bc-menu-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{ marginBottom: 12 }}>
+          ☰ {t('common.menu')}
+        </button>
+        {children}
+      </main>
     </div>
   );
 }

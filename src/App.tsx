@@ -1,56 +1,29 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './hooks/useAuth';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import Login from './pages/auth/Login';
-import EmployerSignup from './pages/auth/EmployerSignup';
-import EmployeeSignup from './pages/auth/EmployeeSignup';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import EmployerDashboard from './pages/employer/Dashboard';
-import EmployeeDashboard from './pages/employee/Dashboard';
-import AdminDashboard from './pages/admin/Dashboard';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { currentSurface } from './lib/surface';
+import { Loading } from './components/ui';
 
-function App() {
+// Each experience is a separate chunk: the public website never downloads app or auth code.
+const PublicSite = lazy(() => import('./surfaces/PublicSite'));
+const AppSurface = lazy(() => import('./surfaces/AppSurface'));
+const AdminSurface = lazy(() => import('./surfaces/AdminSurface'));
+
+export default function App() {
+  const surface = currentSurface();
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup/employer" element={<EmployerSignup />} />
-          <Route path="/signup/employee" element={<EmployeeSignup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-
-          <Route
-            path="/employer/*"
-            element={
-              <ProtectedRoute allowedRoles={['employer']}>
-                <EmployerDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/employee/*"
-            element={
-              <ProtectedRoute allowedRoles={['employee']}>
-                <EmployeeDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute allowedRoles={['super_admin']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <BrowserRouter>
+      <Suspense fallback={<Loading />}>
+        {surface === 'app' && <AppSurface />}
+        {surface === 'admin' && <AdminSurface />}
+        {surface === 'public' && <PublicSite />}
+        {surface === 'dev' && (
+          <Routes>
+            <Route path="/app/*" element={<AppSurface />} />
+            <Route path="/admin/*" element={<AdminSurface />} />
+            <Route path="/*" element={<PublicSite />} />
+          </Routes>
+        )}
+      </Suspense>
+    </BrowserRouter>
   );
 }
-
-export default App;
