@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Builds
+dist/
+**/dist/
+dist-ssr/
+*.tsbuildinfo
+mobile/.expo/
+mobile/ios/
+mobile/android/
+mobile/web-build/
+
+# Secrets — never commit. Use .env.example files as templates.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.p8
+*.p12
+*.key
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Local data
+.mail-outbox/
+**/.mail-outbox/
+*.local
+*.log
+coverage/
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
