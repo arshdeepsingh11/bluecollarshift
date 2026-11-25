@@ -24,7 +24,7 @@ const schema = z
     /** Server-only. Used for Supabase Auth admin calls (invite links). NEVER sent to clients. */
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
 
-    APP_URL: z.string().url().default('http://localhost:5173'),
+    APP_URL: z.string().url().default('http://localhost:5173/app'),
     ADMIN_URL: z.string().url().default('http://localhost:5173/admin'),
     CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:4173'),
 
