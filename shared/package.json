@@ -1,0 +1,20 @@
+{
+  "name": "@bluecollar/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared types, validation schemas, permissions and payroll rules for Blue Collar (web, server, mobile).",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.3",
+    "vitest": "^5.1.2"
+  }
+}
