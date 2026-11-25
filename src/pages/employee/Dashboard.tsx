@@ -1,26 +1,39 @@
-import { Routes, Route } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import EmployeeOverview from './Overview';
-import EmployeeShifts from './Shifts';
-import EmployeeCalendar from './Calendar';
-import EmployeePay from './Pay';
+import { Loading } from '../../components/ui';
+import { APP } from '../../lib/surface';
+import { t } from '../../i18n';
 
-const navItems = [
-  { label: 'Overview', to: '/employee' },
-  { label: 'Shifts', to: '/employee/shifts' },
-  { label: 'Calendar', to: '/employee/calendar' },
-  { label: 'Pay', to: '/employee/pay' },
-];
+const Today = lazy(() => import('./Overview'));
+const Shifts = lazy(() => import('./Shifts'));
+const Hours = lazy(() => import('./Hours'));
+const Pay = lazy(() => import('./Pay'));
+const Messages = lazy(() => import('../../components/MessagesPanel'));
+const Notifications = lazy(() => import('../../components/NotificationsPage'));
 
 export default function EmployeeDashboard() {
+  const nav = [
+    { label: t('nav.today'), to: `${APP}/me`, end: true },
+    { label: t('nav.my_shifts'), to: `${APP}/me/shifts` },
+    { label: t('nav.my_hours'), to: `${APP}/me/hours` },
+    { label: t('nav.my_pay'), to: `${APP}/me/pay` },
+    { label: t('nav.messages'), to: `${APP}/me/messages` },
+    { label: t('nav.notifications'), to: `${APP}/me/notifications` },
+  ];
   return (
-    <DashboardLayout logoText="Employee Panel" navItems={navItems}>
-      <Routes>
-        <Route path="/" element={<EmployeeOverview />} />
-        <Route path="shifts" element={<EmployeeShifts />} />
-        <Route path="calendar" element={<EmployeeCalendar />} />
-        <Route path="pay" element={<EmployeePay />} />
-      </Routes>
+    <DashboardLayout subtitle={t('role.employee')} navItems={nav}>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route index element={<Today />} />
+          <Route path="shifts" element={<Shifts />} />
+          <Route path="hours" element={<Hours />} />
+          <Route path="pay" element={<Pay />} />
+          <Route path="messages" element={<Messages />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="*" element={<Navigate to={`${APP}/me`} replace />} />
+        </Routes>
+      </Suspense>
     </DashboardLayout>
   );
 }

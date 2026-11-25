@@ -1,68 +1,42 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { useEmployeeRecord } from '../../hooks/useEmployeeRecord';
+import { useState } from 'react';
+import type { PayrollRecord } from '@bluecollar/shared';
+import { useApi } from '../../hooks/useApi';
+import { useMembership } from '../../hooks/useAuth';
+import { fmtDate, fmtHours, fmtMoney } from '../../lib/format';
+import { t } from '../../i18n';
+import { Alert, Badge, Card, Empty, Loading, Page } from '../../components/ui';
+import { TraceDrawer } from '../employer/Pay';
 
-interface PaySummaryRow {
-  id: string;
-  hours_worked: number;
-  pay_rate: number;
-  total_pay: number;
-  pay_periods: { period_start: string; period_end: string; pay_date: string; status: string } | null;
-}
+type MyRecord = PayrollRecord & { startsOn: string; endsOn: string; payDate: string };
 
-export default function EmployeePay() {
-  const { employee, loading: employeeLoading } = useEmployeeRecord();
-  const [items, setItems] = useState<PaySummaryRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!employee) return;
-    setLoading(true);
-    supabase
-      .from('pay_summary_items')
-      .select('id, hours_worked, pay_rate, total_pay, pay_periods(period_start, period_end, pay_date, status)')
-      .eq('employee_id', employee.id)
-      .then(({ data }) => {
-        setItems((data as unknown as PaySummaryRow[]) ?? []);
-        setLoading(false);
-      });
-  }, [employee]);
-
-  if (employeeLoading || loading) return null;
-
+export default function MyPay() {
+  const m = useMembership();
+  const { data, error, loading } = useApi<{ items: MyRecord[] }>(`/companies/${m.companyId}/my-pay`, [m.companyId]);
+  const [trace, setTrace] = useState<MyRecord | null>(null);
   return (
-    <>
-      <div className="dashboard-header">
-        <h1 className="dashboard-title">Pay</h1>
-        <p className="dashboard-subtitle">Your gross pay history (before tax deductions).</p>
-      </div>
-
-      <div className="dashboard-card">
-        {items.length === 0 ? (
-          <div className="dashboard-empty">No pay summaries yet.</div>
-        ) : (
-          items
-            .sort((a, b) => (b.pay_periods?.pay_date ?? '').localeCompare(a.pay_periods?.pay_date ?? ''))
-            .map((item) => (
-              <div className="list-row" key={item.id}>
-                <div>
-                  <div className="list-row-title">
-                    {item.pay_periods?.period_start} → {item.pay_periods?.period_end}
-                  </div>
-                  <div className="list-row-subtitle">
-                    {item.hours_worked} hrs × ${item.pay_rate}/hr — Pay date: {item.pay_periods?.pay_date}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span className={`status-pill ${item.pay_periods?.status === 'paid' ? 'active' : 'pending'}`}>
-                    {item.pay_periods?.status === 'paid' ? 'Paid' : 'Pending'}
-                  </span>
-                  <span className="status-pill active">${Number(item.total_pay).toFixed(2)}</span>
-                </div>
-              </div>
-            ))
+    <Page title={t('nav.my_pay')}>
+      <Alert kind="info">{t('payroll.disclaimer')}</Alert>
+      {error && <Alert kind="error">{error}</Alert>}
+      <Card>
+        {loading && !data ? <Loading /> : !data?.items.length ? <Empty title={t('payroll.none')} /> : (
+          <table className="bc-table">
+            <thead><tr><th>{t('common.date')}</th><th className="num">{t('payroll.regular')}</th><th className="num">{t('payroll.overtime')}</th><th className="num">{t('payroll.gross')}</th><th>{t('common.status')}</th><th /></tr></thead>
+            <tbody>
+              {data.items.map((r) => (
+                <tr key={r.id}>
+                  <td>{fmtDate(r.startsOn)} – {fmtDate(r.endsOn)}<div className="bc-muted">{t('payroll.pay_date')}: {fmtDate(r.payDate)}</div></td>
+                  <td className="num">{fmtHours(r.regularMinutes)}h</td>
+                  <td className="num">{fmtHours(r.overtimeMinutes)}h</td>
+                  <td className="num"><strong>{fmtMoney(r.grossTotalCents)}</strong></td>
+                  <td><Badge kind={r.status === 'paid' ? 'success' : 'info'}>{r.status}</Badge></td>
+                  <td className="num"><button className="bc-btn ghost small" onClick={() => setTrace(r)}>{t('payroll.trace')}</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
-      </div>
-    </>
+      </Card>
+      {trace && <TraceDrawer record={trace} onClose={() => setTrace(null)} />}
+    </Page>
   );
 }
