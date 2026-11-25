@@ -16,3 +16,15 @@ describe('config', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production', RESEND_API_KEY: 're_x', CORS_ORIGINS: 'http://localhost:5173' })).toThrow(/CORS_ORIGINS/);
   });
 });
+
+describe('config CA certificate file', () => {
+  it('loads the CA certificate from DATABASE_CA_CERT_FILE', async () => {
+    const { writeFileSync, mkdtempSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+    const file = join(mkdtempSync(join(tmpdir(), 'ca-')), 'ca.crt');
+    writeFileSync(file, '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----\n');
+    expect(loadConfig({ ...base, DATABASE_CA_CERT_FILE: file }).DATABASE_CA_CERT).toContain('BEGIN CERTIFICATE');
+    expect(() => loadConfig({ ...base, DATABASE_CA_CERT_FILE: join(tmpdir(), 'missing-ca.crt') })).toThrow(/DATABASE_CA_CERT_FILE/);
+  });
+});

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
 /** All configuration comes from environment variables (never hard-coded). Fails fast on startup. */
@@ -13,6 +14,8 @@ const schema = z
     DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     DATABASE_SSL: z.enum(['require', 'disable']).default('require'),
     DATABASE_CA_CERT: z.string().optional(),
+    /** Path to the database CA certificate (Supabase: Database Settings > SSL Configuration > Download certificate). */
+    DATABASE_CA_CERT_FILE: z.string().optional(),
     STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(500).max(60_000).default(8000),
 
     SUPABASE_URL: z.string().url(),
@@ -67,5 +70,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n  ');
     throw new Error(`Invalid configuration:\n  ${issues}`);
   }
-  return parsed.data;
+  const data = parsed.data;
+  if (!data.DATABASE_CA_CERT && data.DATABASE_CA_CERT_FILE) {
+    try {
+      data.DATABASE_CA_CERT = readFileSync(data.DATABASE_CA_CERT_FILE, 'utf8');
+    } catch (e) {
+      throw new Error(`Invalid configuration:\n  DATABASE_CA_CERT_FILE: cannot read ${data.DATABASE_CA_CERT_FILE} (${(e as Error).message})`);
+    }
+  }
+  return data;
 }

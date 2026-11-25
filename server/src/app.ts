@@ -146,11 +146,12 @@ export async function buildApp(services: Services): Promise<FastifyInstance> {
 
   // Health checks (no authentication; reveal nothing sensitive).
   app.get('/health', { config: { rateLimit: false } }, async () => ({ status: 'ok' }));
-  app.get('/health/ready', { config: { rateLimit: false } }, async (_req, reply) => {
+  app.get('/health/ready', { config: { rateLimit: false } }, async (req, reply) => {
     try {
       const ms = await services.db.ping();
       return { status: 'ready', database: { ok: true, latencyMs: ms } };
-    } catch {
+    } catch (err) {
+      req.log.error({ err: (err as Error).message }, 'database not reachable');
       return reply.status(503).send({ status: 'unavailable', database: { ok: false } });
     }
   });

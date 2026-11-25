@@ -16,7 +16,7 @@ Set `bc_api` password (32+ random chars), store it only in the server env.
    ```
 3. TLS reverse proxy (Caddy): `api.bluecollarshift.com { reverse_proxy 127.0.0.1:8080 }` — Caddy gets certificates automatically.
 4. `/etc/bluecollar/api.env` = `server/.env.example` filled in. Required in production:
-   `NODE_ENV=production`, `DATABASE_URL` (pooler, port 6543, user `bc_api.<ref>`), `DATABASE_SSL=require`, `SUPABASE_URL`, `CORS_ORIGINS` (https only), `RESEND_API_KEY`, `EMAIL_FROM`. The API refuses to start if these are wrong.
+   `NODE_ENV=production`, `DATABASE_URL` (pooler, port 6543, user `bc_api.<ref>`), `DATABASE_SSL=require`, `DATABASE_CA_CERT_FILE` (Supabase CA from Database Settings → SSL Configuration; committed at `server/certs/supabase-ca.crt`), `SUPABASE_URL`, `CORS_ORIGINS` (https only), `RESEND_API_KEY`, `EMAIL_FROM`. The API refuses to start if these are wrong.
 5. First platform admin (one time, from your Mac — needs the direct `postgres` connection string, never stored on the server):
    `cd server && DATABASE_URL='postgres://postgres:<pw>@db.<ref>.supabase.co:5432/postgres' node scripts/create-super-admin.mjs you@bluecollarshift.com`
    Sign up and verify the email first. Then enrol MFA at admin.bluecollarshift.com.

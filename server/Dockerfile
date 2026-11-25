@@ -19,6 +19,8 @@ WORKDIR /app
 COPY --from=build --chown=app:app /repo/server/node_modules ./node_modules
 COPY --from=build --chown=app:app /repo/server/dist ./dist
 COPY --from=build --chown=app:app /repo/server/package.json ./package.json
+# Public CA certificate of the database host (Supabase) so TLS is verified.
+COPY --chown=app:app server/certs ./certs
 USER app
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
