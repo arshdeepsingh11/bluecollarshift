@@ -50,11 +50,13 @@ export default function Login({ admin = false }: { admin?: boolean }) {
           <Field label={t('auth.password')} htmlFor="password">
             <input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
+          <div className="auth-forgot">
+            <Link to={`${admin ? ADMIN : APP}/forgot-password`}>{t('auth.forgot')}</Link>
+          </div>
           <button className="bc-btn block" disabled={busy || !email || !password}>{busy ? t('common.loading') : t('auth.sign_in')}</button>
         </form>
         {!admin && (
           <div className="auth-links">
-            <Link to={`${APP}/forgot-password`}>{t('auth.forgot')}</Link>
             <span>
               {t('auth.no_account')} <Link to={`${APP}/signup`}>{t('auth.create_company')}</Link>
             </span>

@@ -29,7 +29,8 @@ export default function Login() {
   }
 
   async function forgot() {
-    if (!email) return;
+    setError(null);
+    if (!email) return setError(t('enter_email_first'));
     await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: 'https://app.bluecollarshift.com/reset-password' });
     setInfo(t('reset_sent'));
   }

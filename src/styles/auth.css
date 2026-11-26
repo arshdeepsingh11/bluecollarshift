@@ -19,6 +19,8 @@
 .auth-title { font-size: 24px; text-align: center; margin: 0 0 6px; }
 .auth-subtitle { text-align: center; color: var(--bc-text-2); font-size: 14px; margin: 0 0 24px; }
 .auth-links { margin-top: 18px; text-align: center; font-size: 14px; color: var(--bc-text-2); display: flex; flex-direction: column; gap: 8px; }
+.auth-forgot { text-align: right; margin: -4px 0 14px; font-size: 14px; }
+.auth-forgot a { font-weight: 600; text-decoration: none; }
 .auth-links a { font-weight: 600; text-decoration: none; }
 .auth-qr { display: flex; justify-content: center; margin: 12px 0; }
 .auth-qr img { width: 180px; height: 180px; border: 1px solid var(--bc-border); border-radius: 8px; }

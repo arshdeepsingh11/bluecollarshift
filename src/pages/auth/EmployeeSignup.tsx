@@ -105,6 +105,9 @@ export default function AcceptInvite() {
           <Field label={t('auth.password')} htmlFor="pw" hint={mode === 'signup' ? t('auth.password_rules') : undefined}>
             <input id="pw" type="password" required autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
+          {mode === 'signin' && (
+            <div className="auth-forgot"><Link to={`${APP}/forgot-password`}>{t('auth.forgot')}</Link></div>
+          )}
           <button className="bc-btn block" disabled={busy}>{mode === 'signup' ? t('invite.create_account') : t('auth.sign_in')}</button>
         </form>
         <div className="auth-links">

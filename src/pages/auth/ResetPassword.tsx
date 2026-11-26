@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { t } from '../../i18n';
 import { Alert, Field } from '../../components/ui';
-import { APP } from '../../lib/surface';
+import { APP, ADMIN } from '../../lib/surface';
 import { passwordProblem } from './EmployerSignup';
 
-export default function ResetPassword() {
+export default function ResetPassword({ admin = false }: { admin?: boolean }) {
+  const base = admin ? ADMIN : APP;
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export default function ResetPassword() {
         {done ? (
           <>
             <Alert kind="success">{t('auth.password_updated')}</Alert>
-            <Link className="bc-btn block" to={`${APP}/login`}>{t('auth.sign_in')}</Link>
+            <Link className="bc-btn block" to={`${base}/login`}>{t('auth.sign_in')}</Link>
           </>
         ) : !ready ? (
           <Alert kind="warning">{t('invite.expired')}</Alert>

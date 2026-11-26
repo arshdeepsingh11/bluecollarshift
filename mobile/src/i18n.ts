@@ -4,6 +4,7 @@ const en = {
   email: 'Email',
   password: 'Password',
   forgot: 'Forgot password?',
+  enter_email_first: 'Enter your email above first, then tap Forgot password.',
   reset_sent: 'If an account exists for that email, a reset link is on its way.',
   invalid_login: 'Email or password is incorrect.',
   not_employee: 'This app is for employees. Managers: use app.bluecollarshift.com.',
