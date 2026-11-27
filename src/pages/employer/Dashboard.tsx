@@ -18,6 +18,9 @@ const Disputes = lazy(() => import('./Disputes'));
 const Pay = lazy(() => import('./Pay'));
 const Reports = lazy(() => import('./Reports'));
 const Settings = lazy(() => import('./Settings'));
+const Requests = lazy(() => import('./Requests'));
+const Crew = lazy(() => import('./Crew'));
+const Safety = lazy(() => import('./Safety'));
 const Messages = lazy(() => import('../../components/MessagesPanel'));
 const Notifications = lazy(() => import('../../components/NotificationsPage'));
 
@@ -34,7 +37,9 @@ export default function EmployerDashboard() {
     s.on('attendance:update', refresh);
     s.on('timesheet:changed', refresh);
     s.on('notification:new', refresh);
+    s.on('requests:changed', refresh);
     return () => {
+      s.off('requests:changed', refresh);
       s.off('attendance:update', refresh);
       s.off('timesheet:changed', refresh);
       s.off('notification:new', refresh);
@@ -46,12 +51,15 @@ export default function EmployerDashboard() {
     { label: t('nav.dashboard'), to: `${APP}/`, end: true, show: true },
     { label: t('nav.live'), to: `${APP}/live`, show: can('attendance.view') },
     { label: t('nav.schedule'), to: `${APP}/schedule`, show: can('shifts.view') },
+    { label: t('nav.crew'), to: `${APP}/crew`, show: can('attendance.crew') },
+    { label: t('nav.requests'), to: `${APP}/requests`, show: can('requests.manage') },
     { label: t('nav.timesheets'), to: `${APP}/timesheets`, show: can('attendance.view'), count: (c?.pendingTimesheets ?? 0) + (c?.needsReview ?? 0) },
     { label: t('nav.disputes'), to: `${APP}/disputes`, show: can('disputes.resolve'), count: c?.openDisputes },
     { label: t('nav.payroll'), to: `${APP}/payroll`, show: can('payroll.view') },
     { label: t('nav.employees'), to: `${APP}/people`, show: can('members.view') },
     { label: t('nav.sites'), to: `${APP}/sites`, show: can('sites.view') },
     { label: t('nav.messages'), to: `${APP}/messages`, show: can('messages.send'), count: c?.unreadMessages },
+    { label: t('nav.safety'), to: `${APP}/safety`, show: true },
     { label: t('nav.reports'), to: `${APP}/reports`, show: can('reports.view') },
     { label: t('nav.notifications'), to: `${APP}/notifications`, show: true },
     { label: t('nav.settings'), to: `${APP}/settings`, show: true },
@@ -73,6 +81,9 @@ export default function EmployerDashboard() {
           <Route path="reports" element={<Reports />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="requests" element={<Requests />} />
+          <Route path="crew" element={<Crew />} />
+          <Route path="safety" element={<Safety />} />
           <Route path="*" element={<Navigate to={`${APP}/`} replace />} />
         </Routes>
       </Suspense>

@@ -38,7 +38,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
       <footer className="pub-footer">
         <div>
           <strong>Blue Collar</strong>
-          <p>Scheduling, GPS attendance and payroll preparation for the trades. Built in Alberta.</p>
+          <p>Scheduling, GPS attendance and payroll preparation for the trades in Canada, the United States and Mexico.</p>
         </div>
         <nav aria-label="Footer">
           <Link to="/privacy">Privacy</Link>

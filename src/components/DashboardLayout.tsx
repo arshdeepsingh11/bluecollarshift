@@ -3,6 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { onConnectionChange, getSocket } from '../lib/realtime';
 import { t } from '../i18n';
+import { LanguagePicker } from './LanguagePicker';
+import { FeedbackDialog } from './FeedbackDialog';
 import '../styles/dashboard.css';
 
 export interface NavItem {
@@ -16,6 +18,7 @@ export function DashboardLayout({ subtitle, navItems, children, showCompanySwitc
   const { me, membership, selectCompany, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [online, setOnline] = useState(false);
+  const [feedback, setFeedback] = useState(false);
   const loc = useLocation();
   useEffect(() => setOpen(false), [loc.pathname]);
   useEffect(() => {
@@ -61,6 +64,8 @@ export function DashboardLayout({ subtitle, navItems, children, showCompanySwitc
           <span className={`bc-connection ${online ? 'online' : ''}`} style={{ display: 'flex', marginTop: 8, color: '#9fbccb' }}>
             {online ? t('common.online') : t('common.offline')}
           </span>
+          <LanguagePicker signedIn />
+          <button className="bc-btn secondary small" onClick={() => setFeedback(true)}>💬 {t('feedback.open')}</button>
           <button className="bc-btn secondary small" onClick={() => void signOut()}>{t('common.sign_out')}</button>
         </div>
       </aside>
@@ -70,6 +75,7 @@ export function DashboardLayout({ subtitle, navItems, children, showCompanySwitc
         </button>
         {children}
       </main>
+      {feedback && <FeedbackDialog companyId={membership?.companyId ?? null} onClose={() => setFeedback(false)} />}
     </div>
   );
 }

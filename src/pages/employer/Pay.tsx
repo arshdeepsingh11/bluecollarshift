@@ -8,6 +8,7 @@ import { t, type MessageKey } from '../../i18n';
 import { Alert, Badge, Card, Drawer, Empty, Field, Loading, Page } from '../../components/ui';
 
 export default function Pay() {
+  const [format, setFormat] = useState('generic');
   const m = useMembership();
   const { can } = useAuth();
   const base = `/companies/${m.companyId}`;
@@ -56,7 +57,19 @@ export default function Pay() {
                   {current.status === 'approved' && <button className="bc-btn" disabled={busy} onClick={() => window.confirm(t('payroll.mark_paid') + '?') && void act('mark-paid')}>{t('payroll.mark_paid')}</button>}
                 </div>
               )}
-              {current && <button className="bc-btn secondary" style={{ marginBottom: 16 }} onClick={() => void download(`${base}/pay-periods/${current.id}/export.csv`, `payroll-${current.startsOn}.csv`)}>{t('common.export_csv')}</button>}
+              {current && (
+                <div className="bc-actions" style={{ marginBottom: 16, justifyContent: 'flex-start' }}>
+                  <label className="sr-only" htmlFor="xfmt">{t('payroll.export_format')}</label>
+                  <select id="xfmt" value={format} onChange={(e) => setFormat(e.target.value)} style={{ width: 'auto' }}>
+                    {(['generic', 'adp', 'gusto', 'quickbooks', 'wagepoint'] as const).map((f) => <option key={f} value={f}>{t(`payroll.export_${f}`)}</option>)}
+                  </select>
+                  <button className="bc-btn secondary" onClick={async () => {
+                    try { await download(`${base}/pay-periods/${current.id}/export.csv?format=${format}`, `payroll-${current.startsOn}-${format}.csv`); }
+                    catch (e) { setMsg({ kind: 'error', text: errorMessage(e) }); }
+                  }}>{t('payroll.export')}</button>
+                </div>
+              )}
+              {current && <p className="bc-muted" style={{ marginTop: -8 }}>{t(`payroll.export_${format as 'generic'}_hint`)}</p>}
             </div>
             {current && (
               <div className="bc-grid cols-4">

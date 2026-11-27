@@ -54,7 +54,10 @@ export async function api<T = unknown>(path: string, opts: { method?: string; bo
       clearTimeout(timer);
     }
     if (opts.raw) {
-      if (!res.ok) throw new ApiError(res.status, 'error', 'Download failed');
+      if (!res.ok) {
+        const e = ((await res.json().catch(() => ({}))) as { error?: { code?: string; message?: string } }).error;
+        throw new ApiError(res.status, e?.code ?? 'error', e?.message ?? 'Download failed');
+      }
       return res as unknown as T;
     }
     if (res.status === 204) return undefined as T;
@@ -80,6 +83,9 @@ export const put = <T>(path: string, body: Body) => api<T>(path, { method: 'PUT'
 
 export async function download(path: string, filename: string) {
   const res = await api<Response>(path, { raw: true });
+  // Use the server's file name when it sets one (e.g. ADP needs PRxxxEPI.csv).
+  const named = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1];
+  if (named) filename = named;
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

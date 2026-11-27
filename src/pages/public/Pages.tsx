@@ -4,8 +4,8 @@ import { appUrl } from '../../lib/surface';
 
 /** Sets title/description client-side; the prerender step writes the same tags into static HTML. */
 export const SEO: Record<string, { title: string; description: string }> = {
-  '/': { title: 'Blue Collar — Scheduling, GPS attendance & payroll prep for the trades', description: 'Schedule crews, verify clock-ins with GPS (even offline), approve timesheets transparently and prepare payroll. Built for Alberta construction, electrical, plumbing and HVAC companies.' },
-  '/features': { title: 'Features — Blue Collar', description: 'Offline clock-in with GPS, job-site maps, scheduling, transparent timesheet adjustments, Alberta overtime rules, built-in messaging and payroll preparation.' },
+  '/': { title: 'Blue Collar — Scheduling, GPS attendance & payroll prep for the trades', description: 'Schedule crews, verify clock-ins with GPS (even offline), approve timesheets transparently and prepare payroll. Built for construction, electrical, plumbing and HVAC companies across Canada, the United States and Mexico.' },
+  '/features': { title: 'Features — Blue Collar', description: 'Offline clock-in with GPS, job-site maps, scheduling, transparent timesheet adjustments, your own overtime policy, crew clock-in, shift swaps, time off, safety forms, messaging and payroll exports.' },
   '/pricing': { title: 'Pricing — Blue Collar', description: 'Blue Collar is free during launch. No credit card required.' },
   '/contact': { title: 'Contact — Blue Collar', description: 'Questions, demos and support for Blue Collar.' },
   '/privacy': { title: 'Privacy policy — Blue Collar', description: 'How Blue Collar collects, uses and protects personal information.' },
@@ -31,8 +31,12 @@ const FEATURES = [
   ['GPS verification without tracking', 'Location is captured only at clock-in and clock-out and compared with the job-site radius. Out-of-range events are flagged for review, never silently rejected. No continuous tracking.'],
   ['Scheduling by job site', 'Create shifts and recurring weeks, assign crews, add instructions. Employees are notified instantly; changes keep a full history.'],
   ['Transparent timesheet adjustments', 'Correct hours with a required reason. The original record is never overwritten — employees see the original, the change, who made it and why, and can dispute it.'],
-  ['Alberta overtime built in', 'Daily 8 / weekly 44 overtime, whichever is greater, never double-counted. Averaging arrangements and more generous company rules supported — never below the legal minimum.'],
-  ['Payroll preparation', 'Approved hours flow into pay-period summaries with regular and overtime hours, gross estimates and an explanation of every number. Export to CSV for your payroll provider.'],
+  ['Your overtime policy', 'Daily, weekly, both or none — you set the hours and the rate to match your company policy. Never double-counted, with a clear explanation of every number.'],
+  ['Crew clock-in', 'A foreman clocks in the whole crew from one phone — even offline. Every entry records who made it.'],
+  ['Shift swaps, open shifts & time off', 'Workers swap shifts, pick up open shifts and request time off from their phone. Managers approve in one tap and get warned about conflicts.'],
+  ['Safety forms', 'Report incidents, near misses and hazards with a photo. Run toolbox talks and collect sign-offs on each worker’s phone.'],
+  ['Your language', 'English, Español, Français, ਪੰਜਾਬੀ, हिन्दी and ગુજરાતી — each person picks their own, including emails and alerts.'],
+  ['Payroll preparation', 'Approved hours flow into pay-period summaries with regular and overtime hours, gross estimates and an explanation of every number. Export for ADP, Gusto, QuickBooks, Wagepoint or a spreadsheet.'],
   ['Built-in messaging', 'Message employees and crews in real time, send announcements, see read receipts. No SMS fees, no third-party chat.'],
   ['Security first', 'Every request is authorised on our servers and again by the database. Company data is isolated. Administrators use two-step verification. All sensitive changes are audited.'],
 ];
@@ -72,7 +76,7 @@ export function Home() {
             <li><strong>Clock in</strong> on the job site — online or offline.</li>
             <li><strong>Review</strong> flagged events and approve timesheets.</li>
             <li><strong>Adjust</strong> with a reason — the employee sees it.</li>
-            <li><strong>Calculate</strong> overtime and gross pay by Alberta rules.</li>
+            <li><strong>Calculate</strong> overtime and gross pay by your own company policy.</li>
           </ol>
         </div>
       </Section>
@@ -145,7 +149,7 @@ function Legal({ title, updated, children }: { title: string; updated: string; c
 export function Privacy() {
   useSeo('/privacy');
   return (
-    <Legal title="Privacy policy" updated="November 25, 2026">
+    <Legal title="Privacy policy" updated="November 27, 2026">
       <h2>What we collect</h2>
       <p>Account details (name, email), company information, schedules, attendance events (time, and location at the moment of clock-in/out when you allow it), timesheet adjustments, pay rates and pay summaries entered by your employer, messages you send in Blue Collar, and technical logs needed for security.</p>
       <h2>Location</h2>
@@ -155,11 +159,11 @@ export function Privacy() {
       <h2>Who can see it</h2>
       <p>Your employer’s authorised staff, according to their role. Blue Collar staff cannot see company payroll, hours or messages except through time-limited, audited support access requested to resolve an issue.</p>
       <h2>Where it is stored</h2>
-      <p>Our database is hosted by Supabase and our application servers by DigitalOcean. [Confirm the hosting regions before publishing — Canada (ca-central-1 / Toronto) is recommended.] Email delivery uses Resend; push notifications use Apple and Google services via Expo.</p>
+      <p>Our database is hosted by Supabase in Canada (Montréal region). Our application server is hosted by Render in the United States. Email delivery uses Resend; push notifications use Apple and Google services via Expo; sign-up and sign-in may use Cloudflare Turnstile to block bots. Voice notes, screenshots and safety photos are stored privately and are only shared through short-lived links.</p>
       <h2>Retention</h2>
-      <p>Attendance and payroll records are kept while your employer’s account is active and as long as required by employment-standards record-keeping rules (Alberta: at least 3 years). Deleted accounts are removed from backups within 30 days of expiry.</p>
+      <p>Attendance and payroll records are kept while your employer’s account is active and as long as required by the employment-standards record-keeping rules that apply to your employer. Deleted accounts are removed from backups within 30 days of expiry.</p>
       <h2>Your rights</h2>
-      <p>You can ask your employer, or us at <a href="mailto:privacy@bluecollarshift.com">privacy@bluecollarshift.com</a>, for access to or correction of your personal information. Alberta PIPA and federal PIPEDA apply.</p>
+      <p>You can ask your employer, or us at <a href="mailto:privacy@bluecollarshift.com">privacy@bluecollarshift.com</a>, for access to or correction of your personal information under the privacy laws that apply where you work.</p>
     </Legal>
   );
 }
@@ -167,11 +171,11 @@ export function Privacy() {
 export function Terms() {
   useSeo('/terms');
   return (
-    <Legal title="Terms of service" updated="November 25, 2026">
+    <Legal title="Terms of service" updated="November 27, 2026">
       <h2>The service</h2>
-      <p>Blue Collar provides scheduling, attendance tracking, timesheet management, messaging and payroll preparation tools. Payroll figures are gross-pay estimates. Blue Collar does not calculate statutory deductions (CPP, EI, income tax) and is not a payroll remittance service.</p>
+      <p>Blue Collar provides scheduling, attendance tracking, timesheet management, messaging and payroll preparation tools. Payroll figures are gross-pay estimates. Blue Collar does not calculate taxes or statutory deductions and is not a payroll remittance service.</p>
       <h2>Employer responsibilities</h2>
-      <p>Employers are responsible for complying with employment-standards legislation, configuring rules correctly (including exemptions), reviewing and approving timesheets, and paying employees correctly.</p>
+      <p>Employers are responsible for complying with the employment laws that apply to them, setting their overtime policy correctly (including exemptions), reviewing and approving timesheets, and paying employees correctly.</p>
       <h2>Acceptable use</h2>
       <p>No attempts to access another company’s data, bypass security, or misuse location or messaging features. Users must be at least 18 years old.</p>
       <h2>Availability and data</h2>
@@ -185,7 +189,7 @@ export function Terms() {
 export function SecurityPolicy() {
   useSeo('/security');
   return (
-    <Legal title="Security & vulnerability disclosure" updated="November 25, 2026">
+    <Legal title="Security & vulnerability disclosure" updated="November 27, 2026">
       <h2>How we protect your data</h2>
       <ul>
         <li>Every request is authenticated and authorised on our servers, and again by row-level security in the database.</li>

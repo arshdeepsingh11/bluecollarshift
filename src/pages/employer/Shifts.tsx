@@ -49,6 +49,7 @@ export default function Shifts() {
                       <strong>{fmtTime(s.startsAt)}–{fmtTime(s.endsAt)}</strong>
                       <div>{s.siteName}</div>
                       <div className="bc-muted">{s.assignees.map((a) => a.fullName).join(', ')}</div>
+                      {s.openSlots > 0 && <div><span className="bc-badge warning">{t('schedule.open_badge', { n: s.openSlots })}</span></div>}
                     </div>
                   ))}
                 </div>
@@ -78,6 +79,7 @@ function ShiftDrawer({ base, shift, sites, people, onClose, onSaved }: { base: s
     instructions: shift?.instructions ?? '',
     membershipIds: shift?.assignees.map((a) => a.membershipId) ?? [],
     repeatWeeks: '0',
+    openSlots: String(shift?.openSlots ?? 0),
   });
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -91,17 +93,23 @@ function ShiftDrawer({ base, shift, sites, people, onClose, onSaved }: { base: s
       if (shift) {
         await patch(`${base}/shifts/${shift.id}`, {
           version: shift.version, siteId: f.siteId, startsAt: fromLocalInput(f.startsAt), endsAt: fromLocalInput(f.endsAt),
-          breakMinutes: Number(f.breakMinutes), instructions: f.instructions || null, membershipIds: f.membershipIds, ...(status ? { status } : {}),
+          breakMinutes: Number(f.breakMinutes), instructions: f.instructions || null, membershipIds: f.membershipIds, openSlots: Number(f.openSlots), ...(status ? { status } : {}),
         });
         onSaved();
       } else {
-        const r = await post<{ warnings: unknown[] }>(`${base}/shifts`, {
+        const r = await post<{ warnings: { conflicts?: { membership_id: string }[]; availability?: { membership_id: string; kind: string }[] }[] }>(`${base}/shifts`, {
           siteId: f.siteId, startsAt: fromLocalInput(f.startsAt), endsAt: fromLocalInput(f.endsAt), breakMinutes: Number(f.breakMinutes),
-          instructions: f.instructions || null, membershipIds: f.membershipIds, repeatWeeks: Number(f.repeatWeeks),
+          instructions: f.instructions || null, membershipIds: f.membershipIds, repeatWeeks: Number(f.repeatWeeks), openSlots: Number(f.openSlots),
         });
         if (r.warnings?.length) {
-          setWarning(t('schedule.conflicts'));
-          setTimeout(onSaved, 1500);
+          const name = (id: string) => people.find((p) => p.membershipId === id)?.fullName ?? '';
+          const lines = new Set<string>();
+          for (const w of r.warnings) {
+            for (const c of w.conflicts ?? []) lines.add(t('schedule.warn_overlap', { name: name(c.membership_id) }));
+            for (const a of w.availability ?? []) lines.add(t(a.kind === 'time_off' ? 'schedule.warn_time_off' : 'schedule.warn_unavailable', { name: name(a.membership_id) }));
+          }
+          setWarning([t('schedule.conflicts'), ...lines].join(' · '));
+          setTimeout(onSaved, 3500);
         } else onSaved();
       }
     } catch (err) {
@@ -129,6 +137,7 @@ function ShiftDrawer({ base, shift, sites, people, onClose, onSaved }: { base: s
         <div className="bc-row">
           <Field label={t('schedule.break')} htmlFor="sbreak"><input id="sbreak" type="number" min={0} max={240} value={f.breakMinutes} onChange={(e) => setF({ ...f, breakMinutes: e.target.value })} /></Field>
           {!shift && <Field label={t('schedule.repeat')} htmlFor="srep"><input id="srep" type="number" min={0} max={12} value={f.repeatWeeks} onChange={(e) => setF({ ...f, repeatWeeks: e.target.value })} /></Field>}
+          <Field label={t('schedule.open_slots')} htmlFor="sopen" hint={t('schedule.open_slots_hint')}><input id="sopen" type="number" min={0} max={50} value={f.openSlots} onChange={(e) => setF({ ...f, openSlots: e.target.value })} /></Field>
         </div>
         <Field label={t('schedule.instructions')} htmlFor="sinst"><textarea id="sinst" maxLength={2000} value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} /></Field>
         <Field label={t('schedule.assign')}>
@@ -143,7 +152,7 @@ function ShiftDrawer({ base, shift, sites, people, onClose, onSaved }: { base: s
         </Field>
         <div className="bc-actions">
           {shift && shift.status === 'scheduled' && <button type="button" className="bc-btn danger" disabled={busy} onClick={(e) => void submit(e as unknown as FormEvent, 'cancelled')}>{t('schedule.cancel_shift')}</button>}
-          <button className="bc-btn" disabled={busy || !f.membershipIds.length || !f.siteId}>{busy ? t('common.saving') : t('common.save')}</button>
+          <button className="bc-btn" disabled={busy || (!f.membershipIds.length && Number(f.openSlots) < 1) || !f.siteId}>{busy ? t('common.saving') : t('common.save')}</button>
         </div>
       </form>
     </Drawer>

@@ -2,9 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Session } from '@supabase/supabase-js';
 import type { CompanyPermission, Me, MeMembership } from '@bluecollar/shared';
 import { supabase } from '../lib/supabaseClient';
-import { ApiError, get } from '../lib/api';
+import { ApiError, get, patch } from '../lib/api';
 import { closeSocket } from '../lib/realtime';
-import { setLocale } from '../i18n';
+import { setCurrency } from '../lib/format';
+import { normalizeLocale, setLocale, storedLocale } from '../i18n';
 
 type MeResponse = Me & { needsOnboarding: boolean; mfaLevel: 'aal1' | 'aal2' };
 
@@ -46,8 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const m = await get<MeResponse>('/me');
-      setMe(m);
-      setLocale(m.locale);
+      // A language picked before signing in wins over the default profile language.
+      const chosen = storedLocale();
+      let locale = normalizeLocale(m.locale);
+      if (chosen && chosen !== locale && locale === 'en') {
+        locale = chosen;
+        void patch('/me', { locale }).catch(() => undefined);
+      }
+      setMe({ ...m, locale });
+      await setLocale(locale, true);
       setError(null);
     } catch (e) {
       setMe(null);
@@ -77,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!me?.memberships.length) return null;
     return me.memberships.find((m) => m.companyId === companyId) ?? me.memberships[0] ?? null;
   }, [me, companyId]);
+  setCurrency(membership?.currency);
 
   const value: AuthState = {
     session,

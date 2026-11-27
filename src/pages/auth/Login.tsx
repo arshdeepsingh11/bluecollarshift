@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { t } from '../../i18n';
 import { Alert, Field } from '../../components/ui';
 import { ADMIN, APP } from '../../lib/surface';
+import { Captcha, captchaEnabled } from '../../components/Captcha';
+import { LanguagePicker } from '../../components/LanguagePicker';
 
 /** Only allow same-site relative redirects (prevents open-redirect attacks). */
 export function safeNext(next: string | null, fallback: string) {
@@ -15,6 +17,7 @@ export function authErrorMessage(message: string) {
   if (m.includes('invalid login')) return t('auth.invalid_credentials');
   if (m.includes('not confirmed')) return t('auth.email_not_confirmed');
   if (m.includes('rate') || m.includes('too many')) return t('auth.rate_limited');
+  if (m.includes('captcha')) return t('auth.captcha_failed');
   return t('common.error');
 }
 
@@ -23,15 +26,18 @@ export default function Login({ admin = false }: { admin?: boolean }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(params.get('denied') ? 'This account does not have platform access.' : null);
+  const [error, setError] = useState<string | null>(params.get('denied') ? t('auth.no_platform_access') : null);
   const [busy, setBusy] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password, options: { captchaToken: captcha ?? undefined } });
     setBusy(false);
+    setCaptchaReset((n) => n + 1);
     if (err) return setError(authErrorMessage(err.message));
     navigate(safeNext(params.get('next'), admin ? `${ADMIN}/mfa` : `${APP}/`), { replace: true });
   }
@@ -53,7 +59,8 @@ export default function Login({ admin = false }: { admin?: boolean }) {
           <div className="auth-forgot">
             <Link to={`${admin ? ADMIN : APP}/forgot-password`}>{t('auth.forgot')}</Link>
           </div>
-          <button className="bc-btn block" disabled={busy || !email || !password}>{busy ? t('common.loading') : t('auth.sign_in')}</button>
+          <Captcha onToken={setCaptcha} resetKey={captchaReset} />
+          <button className="bc-btn block" disabled={busy || !email || !password || (captchaEnabled && !captcha)}>{busy ? t('common.loading') : t('auth.sign_in')}</button>
         </form>
         {!admin && (
           <div className="auth-links">
@@ -63,6 +70,7 @@ export default function Login({ admin = false }: { admin?: boolean }) {
             <span>{t('auth.have_invite')}</span>
           </div>
         )}
+        <div className="auth-lang"><LanguagePicker className="" /></div>
       </div>
     </main>
   );

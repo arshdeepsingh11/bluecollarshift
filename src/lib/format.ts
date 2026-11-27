@@ -1,10 +1,17 @@
-/** Locale-aware formatting (en-CA). Times are shown in the company time zone. */
+import { intlLocale } from '../i18n';
+
+/** Formatting in the user's language. Times are shown in the company time zone; money in the company currency. */
 const cache = new Map<string, Intl.DateTimeFormat>();
+let currency = 'CAD';
+export function setCurrency(c: string | null | undefined) {
+  if (c) currency = c;
+}
 function f(opts: Intl.DateTimeFormatOptions, tz?: string) {
-  const key = JSON.stringify(opts) + (tz ?? '');
+  const loc = intlLocale();
+  const key = loc + JSON.stringify(opts) + (tz ?? '');
   let v = cache.get(key);
   if (!v) {
-    v = new Intl.DateTimeFormat('en-CA', { ...opts, timeZone: tz });
+    v = new Intl.DateTimeFormat(loc, { ...opts, timeZone: tz });
     cache.set(key, v);
   }
   return v;
@@ -24,7 +31,9 @@ export const fmtMinutes = (m: number | null | undefined) => {
   return `${h}h ${String(mm).padStart(2, '0')}m`;
 };
 export const fmtHours = (m: number) => (m / 60).toFixed(2);
-export const fmtMoney = (cents: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(cents / 100);
+export const fmtMoney = (cents: number) => new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(cents / 100);
+/** Money from a decimal string like "28.50". */
+export const money = (amount: string | number) => fmtMoney(Math.round(Number(amount) * 100));
 
 /** Value for <input type="datetime-local"> in the browser's zone. */
 export function toLocalInput(iso: string) {

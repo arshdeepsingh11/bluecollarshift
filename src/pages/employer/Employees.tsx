@@ -3,8 +3,8 @@ import { ASSIGNABLE_ROLES, type CompanyRole, type Invitation, type JobSite, type
 import { useApi } from '../../hooks/useApi';
 import { useAuth, useMembership } from '../../hooks/useAuth';
 import { errorMessage, patch, post } from '../../lib/api';
-import { fmtDate, today } from '../../lib/format';
-import { t } from '../../i18n';
+import { fmtDate, money, today } from '../../lib/format';
+import { getLocale, LANGUAGES, t } from '../../i18n';
 import { Alert, Badge, Card, Drawer, Empty, Field, Loading, Page } from '../../components/ui';
 
 export default function Employees() {
@@ -35,7 +35,7 @@ export default function Employees() {
                     <td><strong>{p.fullName}</strong><div className="bc-muted">{p.email}</div></td>
                     <td>{t(`role.${p.role}`)}</td>
                     <td>{p.jobTitle ?? '—'}</td>
-                    {can('payrates.view') && <td className="num">{p.hourlyRate ? `$${p.hourlyRate}` : '—'}</td>}
+                    {can('payrates.view') && <td className="num">{p.hourlyRate ? money(p.hourlyRate) : '—'}</td>}
                     <td><Badge kind={p.status === 'active' ? 'success' : undefined}>{t(p.status === 'active' ? 'people.status_active' : 'people.status_inactive')}</Badge></td>
                   </tr>
                 ))}
@@ -90,7 +90,7 @@ function SitePicker({ sites, value, onChange }: { sites: JobSite[]; value: strin
 
 function InviteDrawer({ base, role, canRate, sites, onClose, onDone }: { base: string; role: CompanyRole; canRate: boolean; sites: JobSite[]; onClose: () => void; onDone: (email: string) => void }) {
   const roles = ASSIGNABLE_ROLES[role];
-  const [form, setForm] = useState({ email: '', fullName: '', role: roles.includes('employee') ? 'employee' : roles[0] ?? 'employee', hourlyRate: '', siteIds: [] as string[] });
+  const [form, setForm] = useState({ email: '', fullName: '', role: roles.includes('employee') ? 'employee' : roles[0] ?? 'employee', hourlyRate: '', siteIds: [] as string[], locale: getLocale() as string });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   async function submit(e: FormEvent) {
@@ -98,7 +98,7 @@ function InviteDrawer({ base, role, canRate, sites, onClose, onDone }: { base: s
     setBusy(true);
     setError(null);
     try {
-      await post(`${base}/invitations`, { email: form.email, fullName: form.fullName, role: form.role, siteIds: form.siteIds, ...(form.hourlyRate ? { hourlyRate: Number(form.hourlyRate) } : {}) });
+      await post(`${base}/invitations`, { email: form.email, fullName: form.fullName, role: form.role, siteIds: form.siteIds, locale: form.locale, ...(form.hourlyRate ? { hourlyRate: Number(form.hourlyRate) } : {}) });
       onDone(form.email);
     } catch (err) {
       setError(errorMessage(err));
@@ -117,6 +117,11 @@ function InviteDrawer({ base, role, canRate, sites, onClose, onDone }: { base: s
             {roles.map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
           </select>
         </Field>
+        <Field label={t('people.invite_language')} htmlFor="ilang" hint={t('people.invite_language_hint')}>
+          <select id="ilang" value={form.locale} onChange={(e) => setForm({ ...form, locale: e.target.value })}>
+            {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+          </select>
+        </Field>
         {canRate && <Field label={t('people.hourly_rate')} htmlFor="irate"><input id="irate" type="number" min="0" step="0.01" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} /></Field>}
         {sites.length > 0 && <Field label={t('people.sites_scope')}><SitePicker sites={sites} value={form.siteIds} onChange={(siteIds) => setForm({ ...form, siteIds })} /></Field>}
         <div className="bc-actions"><button type="button" className="bc-btn secondary" onClick={onClose}>{t('common.cancel')}</button><button className="bc-btn" disabled={busy}>{t('people.invite')}</button></div>
@@ -130,7 +135,7 @@ function MemberDrawer(p: {
   onClose: () => void; onSaved: () => void;
 }) {
   const { member } = p;
-  const [form, setForm] = useState({ role: member.role, jobTitle: member.jobTitle ?? '', overtimeExempt: member.overtimeExempt, siteIds: member.siteIds });
+  const [form, setForm] = useState({ role: member.role, jobTitle: member.jobTitle ?? '', overtimeExempt: member.overtimeExempt, siteIds: member.siteIds, payrollId: member.payrollId ?? '', crewLead: member.crewLead });
   const [error, setError] = useState<string | null>(null);
   const [rate, setRate] = useState({ hourlyRate: '', effectiveFrom: today() });
   const rates = useApi<{ items: { id: string; hourlyRate: string; effectiveFrom: string }[] }>(p.canRates || p.isMe ? `${p.base}/members/${member.membershipId}/pay-rates` : null, [member.membershipId]);
@@ -140,7 +145,7 @@ function MemberDrawer(p: {
   async function save(extra: Record<string, unknown> = {}) {
     setError(null);
     try {
-      await patch(`${p.base}/members/${member.membershipId}`, { role: form.role, jobTitle: form.jobTitle || null, overtimeExempt: form.overtimeExempt, siteIds: form.siteIds, ...extra });
+      await patch(`${p.base}/members/${member.membershipId}`, { role: form.role, jobTitle: form.jobTitle || null, overtimeExempt: form.overtimeExempt, siteIds: form.siteIds, payrollId: form.payrollId.trim() || null, crewLead: form.crewLead, ...extra });
       p.onSaved();
     } catch (e) {
       setError(errorMessage(e));
@@ -169,6 +174,10 @@ function MemberDrawer(p: {
       </Field>
       <Field label={t('people.job_title')} htmlFor="mtitle"><input id="mtitle" disabled={!editable} value={form.jobTitle} onChange={(e) => setForm({ ...form, jobTitle: e.target.value })} /></Field>
       <label className="bc-check"><input type="checkbox" disabled={!editable} checked={form.overtimeExempt} onChange={(e) => setForm({ ...form, overtimeExempt: e.target.checked })} />{t('people.overtime_exempt')}</label>
+      {form.role === 'employee' && (
+        <label className="bc-check"><input type="checkbox" disabled={!editable} checked={form.crewLead} onChange={(e) => setForm({ ...form, crewLead: e.target.checked })} />{t('people.crew_lead')}</label>
+      )}
+      <Field label={t('people.payroll_id')} htmlFor="mpid" hint={t('people.payroll_id_hint')}><input id="mpid" disabled={!editable} maxLength={32} value={form.payrollId} onChange={(e) => setForm({ ...form, payrollId: e.target.value })} /></Field>
       {p.sites.length > 0 && <Field label={t('people.sites_scope')}><SitePicker sites={p.sites} value={form.siteIds} onChange={(siteIds) => editable && setForm({ ...form, siteIds })} /></Field>}
       {editable && (
         <div className="bc-actions" style={{ marginBottom: 24 }}>
@@ -182,7 +191,7 @@ function MemberDrawer(p: {
         <>
           <h3 style={{ fontSize: 16, margin: '8px 0' }}>{t('people.rate_history')}</h3>
           {rates.data?.items.length ? (
-            <table className="bc-table"><tbody>{rates.data.items.map((r) => <tr key={r.id}><td>{fmtDate(r.effectiveFrom)}</td><td className="num">${r.hourlyRate}</td></tr>)}</tbody></table>
+            <table className="bc-table"><tbody>{rates.data.items.map((r) => <tr key={r.id}><td>{fmtDate(r.effectiveFrom)}</td><td className="num">{money(r.hourlyRate)}</td></tr>)}</tbody></table>
           ) : <p className="bc-muted">{t('common.none')}</p>}
           {p.canSetRates && !p.isMe && (
             <form onSubmit={addRate} className="bc-row" style={{ marginTop: 12 }}>

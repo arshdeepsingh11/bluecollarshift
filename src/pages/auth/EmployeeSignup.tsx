@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { errorMessage, get, post } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { t, type MessageKey } from '../../i18n';
+import { Captcha, captchaEnabled } from '../../components/Captcha';
+import { LanguagePicker } from '../../components/LanguagePicker';
 import { Alert, Field, Loading } from '../../components/ui';
 import { APP } from '../../lib/surface';
 import { authErrorMessage } from './Login';
@@ -51,6 +53,9 @@ export default function AcceptInvite() {
     }
   }
 
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+
   async function authenticate(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -62,9 +67,10 @@ export default function AcceptInvite() {
     const redirect = `${window.location.origin}${APP}/invite?token=${encodeURIComponent(token)}`;
     const res =
       mode === 'signup'
-        ? await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: fullName }, emailRedirectTo: redirect } })
-        : await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+        ? await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: fullName }, emailRedirectTo: redirect, captchaToken: captcha ?? undefined } })
+        : await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password, options: { captchaToken: captcha ?? undefined } });
     setBusy(false);
+    setCaptchaReset((n) => n + 1);
     if (res.error) return setError(authErrorMessage(res.error.message));
     if (mode === 'signup' && !res.data.session) setSent(true);
   }
@@ -108,7 +114,8 @@ export default function AcceptInvite() {
           {mode === 'signin' && (
             <div className="auth-forgot"><Link to={`${APP}/forgot-password`}>{t('auth.forgot')}</Link></div>
           )}
-          <button className="bc-btn block" disabled={busy}>{mode === 'signup' ? t('invite.create_account') : t('auth.sign_in')}</button>
+          <Captcha onToken={setCaptcha} resetKey={captchaReset} />
+          <button className="bc-btn block" disabled={busy || (captchaEnabled && !captcha)}>{mode === 'signup' ? t('invite.create_account') : t('auth.sign_in')}</button>
         </form>
         <div className="auth-links">
           <button className="bc-btn ghost" onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}>
@@ -127,6 +134,7 @@ export default function AcceptInvite() {
         {preview && <p className="auth-subtitle">{t('invite.body', { company: preview.companyName, role: t(`role.${preview.role}` as MessageKey) })}</p>}
         {body()}
         <div className="auth-links"><Link to={`${APP}/login`}>{t('auth.sign_in')}</Link></div>
+        <div className="auth-lang"><LanguagePicker className="" /></div>
       </div>
     </main>
   );

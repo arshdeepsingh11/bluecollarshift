@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { t } from '../../i18n';
+import { Captcha, captchaEnabled } from '../../components/Captcha';
+import { LanguagePicker } from '../../components/LanguagePicker';
 import { Alert, Field } from '../../components/ui';
 import { APP } from '../../lib/surface';
 import { authErrorMessage } from './Login';
@@ -22,6 +24,8 @@ export default function EmployerSignup() {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -32,9 +36,10 @@ export default function EmployerSignup() {
     const { error: err } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { data: { full_name: fullName.trim() }, emailRedirectTo: `${window.location.origin}${APP}/onboarding` },
+      options: { data: { full_name: fullName.trim() }, emailRedirectTo: `${window.location.origin}${APP}/onboarding`, captchaToken: captcha ?? undefined },
     });
     setBusy(false);
+    setCaptchaReset((n) => n + 1);
     // Same response whether or not the email already exists (prevents account enumeration).
     if (err && !err.message.toLowerCase().includes('registered')) return setError(authErrorMessage(err.message));
     setSent(true);
@@ -65,11 +70,13 @@ export default function EmployerSignup() {
               <Field label={t('auth.password')} htmlFor="pw" hint={t('auth.password_rules')}>
                 <input id="pw" type="password" autoComplete="new-password" required minLength={12} value={password} onChange={(e) => setPassword(e.target.value)} />
               </Field>
-              <button className="bc-btn block" disabled={busy}>{busy ? t('common.loading') : t('auth.create_company')}</button>
+              <Captcha onToken={setCaptcha} resetKey={captchaReset} />
+              <button className="bc-btn block" disabled={busy || (captchaEnabled && !captcha)}>{busy ? t('common.loading') : t('auth.create_company')}</button>
             </form>
             <div className="auth-links">
               <Link to={`${APP}/login`}>{t('auth.sign_in')}</Link>
             </div>
+            <div className="auth-lang"><LanguagePicker className="" /></div>
           </>
         )}
       </div>

@@ -6,14 +6,17 @@ import { t } from '../../i18n';
 import { Alert, Field, Loading } from '../../components/ui';
 import { APP } from '../../lib/surface';
 
-const ZONES = ['America/Edmonton', 'America/Vancouver', 'America/Regina', 'America/Winnipeg', 'America/Toronto', 'America/Halifax', 'America/St_Johns'];
+import { COUNTRY_OPTIONS, guessCountryZone, ZONES, type CountryCode } from '../../lib/zones';
 
 export default function Onboarding() {
   const { me, session, loading, reload, selectCompany } = useAuth();
   const navigate = useNavigate();
   const [companyName, setCompanyName] = useState('');
   const [fullName, setFullName] = useState((session?.user.user_metadata?.full_name as string) ?? '');
-  const [timezone, setTimezone] = useState('America/Edmonton');
+  const guess = guessCountryZone();
+  const [country, setCountry] = useState<CountryCode>(guess.country);
+  const [timezone, setTimezone] = useState(guess.zone);
+  const currency = COUNTRY_OPTIONS.find((c) => c.code === country)!.currency;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -25,7 +28,7 @@ export default function Onboarding() {
     setBusy(true);
     setError(null);
     try {
-      const c = await post<{ id: string }>('/companies', { companyName, fullName, timezone });
+      const c = await post<{ id: string }>('/companies', { companyName, fullName, timezone, country, currency });
       selectCompany(c.id);
       await reload();
       navigate(`${APP}/`, { replace: true });
@@ -50,9 +53,14 @@ export default function Onboarding() {
           <Field label={t('onboard.company_name')} htmlFor="cn">
             <input id="cn" required minLength={2} maxLength={120} value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
           </Field>
+          <Field label={t('onboard.country')} htmlFor="ct" hint={t('onboard.currency_hint', { currency })}>
+            <select id="ct" value={country} onChange={(e) => { const c = e.target.value as CountryCode; setCountry(c); setTimezone(ZONES[c][0]!.id); }}>
+              {COUNTRY_OPTIONS.map((c) => <option key={c.code} value={c.code}>{t(`country.${c.code}`)}</option>)}
+            </select>
+          </Field>
           <Field label={t('onboard.timezone')} htmlFor="tz">
             <select id="tz" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-              {ZONES.map((z) => <option key={z}>{z}</option>)}
+              {ZONES[country].map((z) => <option key={z.id} value={z.id}>{z.label}</option>)}
             </select>
           </Field>
           <button className="bc-btn block" disabled={busy}>{busy ? t('common.saving') : t('onboard.create')}</button>

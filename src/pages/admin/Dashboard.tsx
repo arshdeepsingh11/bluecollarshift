@@ -15,6 +15,7 @@ const Audit = lazy(() => import('./AuditLog'));
 const Security = lazy(() => import('./Security'));
 const Support = lazy(() => import('./SupportAccess'));
 const PlatformSettings = lazy(() => import('./Settings'));
+const Feedback = lazy(() => import('./Feedback'));
 
 export default function AdminDashboard() {
   const { me } = useAuth();
@@ -26,6 +27,7 @@ export default function AdminDashboard() {
     { label: t('nav.admin_audit'), to: `${ADMIN}/audit`, show: p.has('platform.audit.view') },
     { label: t('nav.admin_security'), to: `${ADMIN}/security`, show: p.has('platform.security.view') },
     { label: t('nav.admin_support'), to: `${ADMIN}/support`, show: p.has('platform.audit.view') || p.has('platform.support_access.request') },
+    { label: t('nav.admin_feedback'), to: `${ADMIN}/feedback`, show: p.has('platform.feedback.view') },
     { label: t('nav.admin_settings'), to: `${ADMIN}/settings`, show: p.has('platform.overview.view') },
   ].filter((n) => n.show);
   return (
@@ -39,6 +41,7 @@ export default function AdminDashboard() {
           <Route path="security" element={<Security />} />
           <Route path="support" element={<Support />} />
           <Route path="settings" element={<PlatformSettings />} />
+          <Route path="feedback" element={<Feedback />} />
           <Route path="*" element={<Navigate to={`${ADMIN}/`} replace />} />
         </Routes>
       </Suspense>

@@ -108,3 +108,21 @@ a {
     transition: none !important;
   }
 }
+
+/* Indian-language scripts: use the phone/PC's own fonts (no download). */
+html[data-script='gurmukhi'] { --bc-font: 'Noto Sans Gurmukhi', 'Nirmala UI', 'Raavi', 'Mukta Mahee', system-ui, sans-serif; }
+html[data-script='devanagari'] { --bc-font: 'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', 'Kohinoor Devanagari', system-ui, sans-serif; }
+html[data-script='gujarati'] { --bc-font: 'Noto Sans Gujarati', 'Nirmala UI', 'Shruti', 'Gujarati Sangam MN', system-ui, sans-serif; }
+html[data-script='gurmukhi'] body, html[data-script='devanagari'] body, html[data-script='gujarati'] body { line-height: 1.6; }
+.bc-lang-select { width: 100%; margin-top: 10px; background: transparent; color: inherit; border: 1px solid #2c5a72; border-radius: 8px; padding: 6px 8px; font: inherit; }
+.bc-lang-select option { color: #1b2233; }
+.auth-lang { display: flex; justify-content: center; margin-top: 16px; }
+.auth-lang select { width: auto; border: 1px solid var(--bc-border); border-radius: 8px; padding: 6px 10px; background: var(--bc-surface); }
+.bc-recorder { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.bc-recording-dot { width: 10px; height: 10px; border-radius: 50%; background: #d92d20; animation: bc-pulse 1s infinite; }
+@keyframes bc-pulse { 50% { opacity: .3; } }
+.bc-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.bc-chip { border: 1px solid var(--bc-border); background: var(--bc-surface); border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; }
+.bc-chip[aria-pressed='true'] { background: var(--bc-primary, #1f5fa6); color: #fff; border-color: transparent; }
+.bc-day-grid { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; align-items: center; }
+.bc-captcha { min-height: 66px; margin: 8px 0; }
