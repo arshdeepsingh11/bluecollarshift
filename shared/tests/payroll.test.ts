@@ -15,11 +15,11 @@ const day = (date: string, startH: number, hours: number, breakMinutes = 0, id =
   return { id, start: start.toISOString(), end: end.toISOString(), breakMinutes };
 };
 
-const S: CompanyPayrollSettings = { ...DEFAULT_PAYROLL_SETTINGS };
+const S: CompanyPayrollSettings = { ...DEFAULT_PAYROLL_SETTINGS, timezone: 'America/Edmonton', weeklyThresholdMinutes: 2640 };
 const pay = (sessions: PayableSession[], settings = S, rate = 3000) =>
   calculateEmployeePay({ membershipId: 'm1', hourlyRateCents: rate, overtimeExempt: false, sessions }, settings);
 
-describe('Alberta 8/44 overtime', () => {
+describe('company overtime policy (example: 8 h/day, 44 h/week)', () => {
   it('no overtime for a normal 40-hour week', () => {
     // Sun 2027-01-03 starts the week (workWeekStartDow 0). Mon–Fri 8h.
     const r = pay(['2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07', '2027-01-08'].map((d) => day(d, 8, 8)));
@@ -100,11 +100,30 @@ describe('Alberta 8/44 overtime', () => {
     expect(r.overtimeMinutes).toBe(16 * 60);
   });
 
-  it('warns on shifts over 12h span and missing rest breaks', () => {
-    const r = pay([day('2027-01-04', 5, 13, 0)]);
-    const codes = r.warnings.map((w) => w.code);
-    expect(codes).toContain('SHIFT_SPAN_EXCEEDED');
-    expect(codes).toContain('REST_BREAK_MISSING');
+  it('flags sessions over 16 h as a possible missed clock-out', () => {
+    expect(pay([day('2027-01-04', 5, 13)]).warnings).toEqual([]);
+    expect(pay([day('2027-01-04', 2, 17)]).warnings.map((w) => w.code)).toEqual(['LONG_SESSION']);
+  });
+
+  it('weekly-only policy (e.g. 40 h/week): long days are not overtime', () => {
+    const weekly = { ...S, dailyOvertimeEnabled: false, weeklyThresholdMinutes: 2400 };
+    expect(pay([day('2027-01-04', 6, 12)], weekly).overtimeMinutes).toBe(0);
+    const r = pay(['2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07'].map((d) => day(d, 6, 11)), weekly);
+    expect(r.overtimeMinutes).toBe(4 * 60);
+  });
+
+  it('daily-only policy: weekly hours never create overtime', () => {
+    const daily = { ...S, weeklyOvertimeEnabled: false };
+    const sessions = ['2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07', '2027-01-08', '2027-01-09'].map((d) => day(d, 8, 8));
+    expect(pay(sessions, daily).overtimeMinutes).toBe(0);
+  });
+
+  it('no-overtime policy pays everything as regular', () => {
+    const none = { ...S, dailyOvertimeEnabled: false, weeklyOvertimeEnabled: false };
+    const r = pay([day('2027-01-04', 4, 14)], none);
+    expect(r.overtimeMinutes).toBe(0);
+    expect(r.grossTotalCents).toBe(14 * 3000);
+    expect(r.blocks[0]?.rule).toBe('Company policy: no overtime.');
   });
 
   it('excludes invalid sessions with a warning', () => {
@@ -120,14 +139,16 @@ describe('Alberta 8/44 overtime', () => {
   });
 });
 
-describe('legal minimum validation', () => {
+describe('policy validation (sanity bounds only, no legal rules)', () => {
   it('accepts defaults', () => expect(validatePayrollSettings(S)).toEqual([]));
-  it('rejects daily threshold above 8h', () =>
-    expect(validatePayrollSettings({ ...S, dailyThresholdMinutes: 600 })[0]?.field).toBe('dailyThresholdMinutes'));
-  it('rejects weekly threshold above 44h', () =>
-    expect(validatePayrollSettings({ ...S, weeklyThresholdMinutes: 2700 })[0]?.field).toBe('weeklyThresholdMinutes'));
-  it('rejects multiplier below 1.5', () =>
-    expect(validatePayrollSettings({ ...S, overtimeMultiplier: 1.25 })[0]?.field).toBe('overtimeMultiplier'));
+  it('accepts any company choice, e.g. OT after 10 h/day, 50 h/week, 1.25×', () =>
+    expect(validatePayrollSettings({ ...S, dailyThresholdMinutes: 600, weeklyThresholdMinutes: 3000, overtimeMultiplier: 1.25 })).toEqual([]));
+  it('rejects a daily threshold over 24 h', () =>
+    expect(validatePayrollSettings({ ...S, dailyThresholdMinutes: 1500 })[0]?.field).toBe('dailyThresholdMinutes'));
+  it('rejects a weekly threshold over 168 h', () =>
+    expect(validatePayrollSettings({ ...S, weeklyThresholdMinutes: 10081 })[0]?.field).toBe('weeklyThresholdMinutes'));
+  it('rejects a multiplier below 1×', () =>
+    expect(validatePayrollSettings({ ...S, overtimeMultiplier: 0.5 })[0]?.field).toBe('overtimeMultiplier'));
   it('rejects averaging over 52 weeks', () =>
     expect(validatePayrollSettings({ ...S, averaging: { enabled: true, periodWeeks: 60, anchorDate: '2027-01-03' } }).length).toBe(1));
   it('rejects unknown time zone', () =>

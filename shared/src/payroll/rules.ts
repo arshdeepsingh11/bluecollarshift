@@ -1,92 +1,58 @@
 /**
- * Employment-rules profiles.
+ * Company pay policy.
  *
- * A profile defines the LEGAL MINIMUMS for a jurisdiction. Company settings may be
- * MORE generous than the profile (e.g. overtime after 7.5 h), never less.
- * New provinces are added as new profiles — the engine does not change.
- *
- * Sources (Alberta, retrieved Nov 2026):
- *  - alberta.ca/overtime-hours-overtime-pay — "Overtime is all hours worked over 8 hours a day
- *    or 44 hours a week, whichever is greater (8/44 rule)."
- *  - Employment Standards Tool Kit Module 4 — daily and weekly totals are both calculated; the
- *    greater is paid (no double counting).
- *  - alberta.ca/averaging-arrangements — overtime is the greater of daily overtime or averaging-
- *    period overtime (average of 44 h/week).
- * See docs/Legal-Review.md for assumptions that need confirmation by an employment lawyer.
+ * Blue Collar does not apply any province, state or country rules. Each company sets its own
+ * overtime policy (daily, weekly, both or none, and the multiplier) to match its own policy and
+ * the laws it is responsible for. The engine only enforces sanity bounds.
  */
 
-export const RULE_PROFILE_IDS = ['AB_STANDARD'] as const;
+export const RULE_PROFILE_IDS = ['COMPANY_POLICY'] as const;
 export type RuleProfileId = (typeof RULE_PROFILE_IDS)[number];
 
-export interface RuleProfile {
-  id: RuleProfileId;
-  name: string;
-  jurisdiction: string;
-  /** Maximum daily minutes before overtime (legal minimum standard). */
-  maxDailyThresholdMinutes: number;
-  /** Maximum weekly minutes before overtime. */
-  maxWeeklyThresholdMinutes: number;
-  /** Minimum overtime pay multiplier. */
-  minOvertimeMultiplier: number;
-  /** Overtime = greater of daily total and weekly total (true) vs. sum (false). */
-  greaterOfDailyOrWeekly: boolean;
-  /** Longest averaging period allowed, in weeks. */
-  maxAveragingWeeks: number;
-  /** A rest period of `restBreakMinutes` is required within each `restBreakEveryMinutes` of work. */
-  restBreakEveryMinutes: number;
-  restBreakMinutes: number;
-  /** Hours of work should be confined within this many minutes in a work day. */
-  maxWorkDaySpanMinutes: number;
-  /** Banked overtime ratio under an overtime agreement (hours banked per OT hour). */
-  bankedOvertimeRatio: number;
-  legalReviewNotes: string[];
-}
+export const CURRENCIES = ['CAD', 'USD', 'MXN'] as const;
+export type Currency = (typeof CURRENCIES)[number];
+export const COUNTRIES = ['CA', 'US', 'MX'] as const;
+export type Country = (typeof COUNTRIES)[number];
 
-export const RULE_PROFILES: Record<RuleProfileId, RuleProfile> = {
-  AB_STANDARD: {
-    id: 'AB_STANDARD',
-    name: 'Alberta — standard (8/44)',
-    jurisdiction: 'CA-AB',
-    maxDailyThresholdMinutes: 8 * 60,
-    maxWeeklyThresholdMinutes: 44 * 60,
-    minOvertimeMultiplier: 1.5,
-    greaterOfDailyOrWeekly: true,
-    maxAveragingWeeks: 52,
-    restBreakEveryMinutes: 5 * 60,
-    restBreakMinutes: 30,
-    maxWorkDaySpanMinutes: 12 * 60,
-    bankedOvertimeRatio: 1,
-    legalReviewNotes: [
-      'Hours are attributed to the local calendar day on which the work session started.',
-      'Exempt occupations (managers, supervisors, confidential roles, some industries) must be marked as overtime-exempt per employee.',
-      'Banked overtime ratio under an overtime agreement assumed 1:1 — confirm current Code.',
-      'Averaging-arrangement overtime threshold assumed to be 44 h × weeks in the averaging period.',
-      'Rest-period check (30 min per 5 h) produces warnings only; it does not change pay.',
-    ],
-  },
-};
+/** Sanity bounds (not legal rules). */
+export const POLICY_BOUNDS = {
+  minThresholdMinutes: 60,
+  maxDailyThresholdMinutes: 24 * 60,
+  maxWeeklyThresholdMinutes: 7 * 24 * 60,
+  minMultiplier: 1,
+  maxMultiplier: 5,
+  maxAveragingWeeks: 52,
+  /** Sessions longer than this are flagged for a human to check (probably a missed clock-out). */
+  longSessionMinutes: 16 * 60,
+} as const;
 
 export interface CompanyPayrollSettings {
   ruleProfile: RuleProfileId;
   timezone: string;
   /** 0 = Sunday … 6 = Saturday. */
   workWeekStartDow: number;
+  dailyOvertimeEnabled: boolean;
   dailyThresholdMinutes: number;
+  weeklyOvertimeEnabled: boolean;
   weeklyThresholdMinutes: number;
   overtimeMultiplier: number;
   /** If true, recorded breaks are paid; otherwise they are deducted. */
   paidBreaks: boolean;
+  /** Optional multi-week averaging of the weekly threshold. */
   averaging: { enabled: boolean; periodWeeks: number; anchorDate: string } | null;
   /** Employees under an overtime agreement may bank overtime instead of pay. */
   overtimeAgreementBanking: boolean;
 }
 
+/** A common starting point. Every value is editable by the company. */
 export const DEFAULT_PAYROLL_SETTINGS: CompanyPayrollSettings = {
-  ruleProfile: 'AB_STANDARD',
-  timezone: 'America/Edmonton',
+  ruleProfile: 'COMPANY_POLICY',
+  timezone: 'America/Toronto',
   workWeekStartDow: 0,
+  dailyOvertimeEnabled: true,
   dailyThresholdMinutes: 480,
-  weeklyThresholdMinutes: 2640,
+  weeklyOvertimeEnabled: true,
+  weeklyThresholdMinutes: 2400,
   overtimeMultiplier: 1.5,
   paidBreaks: false,
   averaging: null,
@@ -98,36 +64,24 @@ export interface SettingsViolation {
   message: string;
 }
 
-/** Reject settings that would fall below the legal minimum for the profile. */
+/** Reject settings that are impossible or nonsensical. No legal rules are applied here. */
 export function validatePayrollSettings(s: CompanyPayrollSettings): SettingsViolation[] {
-  const p = RULE_PROFILES[s.ruleProfile];
+  const b = POLICY_BOUNDS;
   const v: SettingsViolation[] = [];
-  if (!p) return [{ field: 'ruleProfile', message: 'Unknown rule profile' }];
-  if (s.dailyThresholdMinutes > p.maxDailyThresholdMinutes || s.dailyThresholdMinutes < 60)
-    v.push({
-      field: 'dailyThresholdMinutes',
-      message: `Daily overtime must start at or before ${p.maxDailyThresholdMinutes / 60} hours (${p.name}).`,
-    });
-  if (s.weeklyThresholdMinutes > p.maxWeeklyThresholdMinutes || s.weeklyThresholdMinutes < 60)
-    v.push({
-      field: 'weeklyThresholdMinutes',
-      message: `Weekly overtime must start at or before ${p.maxWeeklyThresholdMinutes / 60} hours (${p.name}).`,
-    });
-  if (s.overtimeMultiplier < p.minOvertimeMultiplier || s.overtimeMultiplier > 5)
-    v.push({
-      field: 'overtimeMultiplier',
-      message: `Overtime rate must be at least ${p.minOvertimeMultiplier}× regular pay.`,
-    });
+  if (!RULE_PROFILE_IDS.includes(s.ruleProfile)) v.push({ field: 'ruleProfile', message: 'Unknown pay policy.' });
+  if (s.dailyThresholdMinutes < b.minThresholdMinutes || s.dailyThresholdMinutes > b.maxDailyThresholdMinutes)
+    v.push({ field: 'dailyThresholdMinutes', message: 'Daily overtime must start between 1 and 24 hours.' });
+  if (s.weeklyThresholdMinutes < b.minThresholdMinutes || s.weeklyThresholdMinutes > b.maxWeeklyThresholdMinutes)
+    v.push({ field: 'weeklyThresholdMinutes', message: 'Weekly overtime must start between 1 and 168 hours.' });
+  if (!(s.overtimeMultiplier >= b.minMultiplier && s.overtimeMultiplier <= b.maxMultiplier))
+    v.push({ field: 'overtimeMultiplier', message: 'Overtime rate must be between 1× and 5× regular pay.' });
   if (s.workWeekStartDow < 0 || s.workWeekStartDow > 6 || !Number.isInteger(s.workWeekStartDow))
     v.push({ field: 'workWeekStartDow', message: 'Work week must start on a day 0–6.' });
   if (s.averaging?.enabled) {
-    if (s.averaging.periodWeeks < 1 || s.averaging.periodWeeks > p.maxAveragingWeeks)
-      v.push({
-        field: 'averaging.periodWeeks',
-        message: `Averaging period must be 1–${p.maxAveragingWeeks} weeks.`,
-      });
+    if (s.averaging.periodWeeks < 1 || s.averaging.periodWeeks > b.maxAveragingWeeks)
+      v.push({ field: 'averaging.periodWeeks', message: `Averaging period must be 1–${b.maxAveragingWeeks} weeks.` });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s.averaging.anchorDate))
-      v.push({ field: 'averaging', message: 'Averaging arrangement needs a start date.' });
+      v.push({ field: 'averaging', message: 'Averaging needs a start date.' });
   }
   try {
     new Intl.DateTimeFormat('en-CA', { timeZone: s.timezone });
@@ -135,4 +89,9 @@ export function validatePayrollSettings(s: CompanyPayrollSettings): SettingsViol
     v.push({ field: 'timezone', message: 'Unknown time zone.' });
   }
   return v;
+}
+
+/** True when the company pays any overtime at all. */
+export function overtimeEnabled(s: Pick<CompanyPayrollSettings, 'dailyOvertimeEnabled' | 'weeklyOvertimeEnabled'>) {
+  return s.dailyOvertimeEnabled || s.weeklyOvertimeEnabled;
 }

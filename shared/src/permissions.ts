@@ -37,6 +37,9 @@ export const COMPANY_PERMISSIONS = [
   'shifts.manage',
   'attendance.view',
   'attendance.review',
+  'attendance.crew',
+  'requests.manage',
+  'safety.manage',
   'timesheets.adjust',
   'timesheets.approve',
   'disputes.resolve',
@@ -60,6 +63,8 @@ export const PLATFORM_PERMISSIONS = [
   'platform.settings.manage',
   'platform.support_access.request',
   'platform.billing.view',
+  'platform.feedback.view',
+  'platform.feedback.manage',
 ] as const;
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[number];
 
@@ -78,6 +83,9 @@ export const DEFAULT_COMPANY_PERMISSIONS: Record<CompanyRole, readonly CompanyPe
     'shifts.manage',
     'attendance.view',
     'attendance.review',
+    'attendance.crew',
+    'requests.manage',
+    'safety.manage',
     'timesheets.adjust',
     'timesheets.approve',
     'disputes.resolve',
@@ -92,6 +100,9 @@ export const DEFAULT_COMPANY_PERMISSIONS: Record<CompanyRole, readonly CompanyPe
     'shifts.manage',
     'attendance.view',
     'attendance.review',
+    'attendance.crew',
+    'requests.manage',
+    'safety.manage',
     'messages.send',
   ],
   payroll: [
@@ -124,9 +135,11 @@ export const DEFAULT_PLATFORM_PERMISSIONS: Record<PlatformRole, readonly Platfor
     'platform.audit.view',
     'platform.security.view',
     'platform.support_access.request',
+    'platform.feedback.view',
+    'platform.feedback.manage',
   ],
-  support: ['platform.overview.view', 'platform.companies.view', 'platform.support_access.request'],
-  operations: ['platform.overview.view', 'platform.security.view', 'platform.audit.view'],
+  support: ['platform.overview.view', 'platform.companies.view', 'platform.support_access.request', 'platform.feedback.view', 'platform.feedback.manage'],
+  operations: ['platform.overview.view', 'platform.security.view', 'platform.audit.view', 'platform.feedback.view'],
   billing: ['platform.overview.view', 'platform.companies.view', 'platform.billing.view'],
   auditor: ['platform.overview.view', 'platform.audit.view', 'platform.security.view', 'platform.companies.view'],
 };

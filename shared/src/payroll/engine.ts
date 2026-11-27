@@ -4,10 +4,10 @@
  * Input: APPROVED effective work sessions (original times or the latest approved adjustment).
  * Output: regular/overtime minutes, gross pay in cents, and a trace explaining every number.
  *
- * Overtime is calculated per overtime block (work week, or averaging period), then the greater of
- * daily overtime and block overtime is used — never both (no double counting).
+ * Overtime follows the COMPANY's own policy (daily, weekly, both or none). Per overtime block (work
+ * week, or averaging period) the greater of daily and block overtime is used — never both.
  */
-import { RULE_PROFILES, type CompanyPayrollSettings } from './rules';
+import { POLICY_BOUNDS, type CompanyPayrollSettings } from './rules';
 import { addDays, daysBetween, localDate, minutesBetween, payForMinutes, workWeekStart } from '../time';
 
 export interface PayableSession {
@@ -44,7 +44,7 @@ export interface BlockLine {
 }
 
 export interface Warning {
-  code: 'SHIFT_SPAN_EXCEEDED' | 'REST_BREAK_MISSING' | 'SESSION_INVALID';
+  code: 'LONG_SESSION' | 'SESSION_INVALID';
   sessionId: string;
   message: string;
 }
@@ -66,7 +66,7 @@ export interface EmployeePayResult {
   ruleProfile: string;
 }
 
-export const ENGINE_VERSION = '1.0.0';
+export const ENGINE_VERSION = '2.0.0';
 
 /** Net paid minutes for a session after unpaid breaks. */
 export function sessionPaidMinutes(s: PayableSession, paidBreaks: boolean): number {
@@ -88,7 +88,6 @@ function blockKey(date: string, settings: CompanyPayrollSettings): { start: stri
 }
 
 export function calculateEmployeePay(input: EmployeePayInput, settings: CompanyPayrollSettings): EmployeePayResult {
-  const profile = RULE_PROFILES[settings.ruleProfile];
   const warnings: Warning[] = [];
   const days = new Map<string, DayLine>();
 
@@ -100,17 +99,11 @@ export function calculateEmployeePay(input: EmployeePayInput, settings: CompanyP
       continue;
     }
     const span = minutesBetween(s.start, s.end);
-    if (span > profile.maxWorkDaySpanMinutes)
+    if (span > POLICY_BOUNDS.longSessionMinutes)
       warnings.push({
-        code: 'SHIFT_SPAN_EXCEEDED',
+        code: 'LONG_SESSION',
         sessionId: s.id,
-        message: `Work spanned ${(span / 60).toFixed(1)} h, more than ${profile.maxWorkDaySpanMinutes / 60} h.`,
-      });
-    if (span > profile.restBreakEveryMinutes && s.breakMinutes < profile.restBreakMinutes)
-      warnings.push({
-        code: 'REST_BREAK_MISSING',
-        sessionId: s.id,
-        message: `No ${profile.restBreakMinutes}-minute rest recorded in a session over ${profile.restBreakEveryMinutes / 60} h.`,
+        message: `Session lasted ${(span / 60).toFixed(1)} h. Check for a missed clock-out.`,
       });
     const date = localDate(s.start, settings.timezone);
     const line = days.get(date) ?? { date, workedMinutes: 0, dailyOvertimeMinutes: 0, sessionIds: [] };
@@ -121,7 +114,8 @@ export function calculateEmployeePay(input: EmployeePayInput, settings: CompanyP
 
   const sortedDays = [...days.values()].sort((a, b) => a.date.localeCompare(b.date));
   for (const d of sortedDays) {
-    d.dailyOvertimeMinutes = input.overtimeExempt ? 0 : Math.max(0, d.workedMinutes - settings.dailyThresholdMinutes);
+    d.dailyOvertimeMinutes =
+      input.overtimeExempt || !settings.dailyOvertimeEnabled ? 0 : Math.max(0, d.workedMinutes - settings.dailyThresholdMinutes);
   }
 
   const blocks = new Map<string, BlockLine>();
@@ -156,13 +150,13 @@ export function calculateEmployeePay(input: EmployeePayInput, settings: CompanyP
       b.rule = 'Employee is marked overtime-exempt.';
       continue;
     }
-    b.blockOvertime = Math.max(0, b.workedMinutes - b.thresholdMinutes);
-    b.overtimeMinutes = profile.greaterOfDailyOrWeekly
-      ? Math.max(b.dailyOvertimeTotal, b.blockOvertime)
-      : b.dailyOvertimeTotal + b.blockOvertime;
-    b.rule =
-      `Greater of daily overtime (${b.dailyOvertimeTotal} min) and ` +
-      `${b.kind === 'week' ? 'weekly' : 'averaging-period'} overtime (${b.blockOvertime} min over ${b.thresholdMinutes} min).`;
+    b.blockOvertime = settings.weeklyOvertimeEnabled ? Math.max(0, b.workedMinutes - b.thresholdMinutes) : 0;
+    // Never both: the greater of daily and weekly overtime is paid (no double counting).
+    b.overtimeMinutes = Math.max(b.dailyOvertimeTotal, b.blockOvertime);
+    b.rule = !settings.dailyOvertimeEnabled && !settings.weeklyOvertimeEnabled
+      ? 'Company policy: no overtime.'
+      : `Company policy: greater of daily overtime (${b.dailyOvertimeTotal} min) and ` +
+        `${b.kind === 'week' ? 'weekly' : 'averaging-period'} overtime (${b.blockOvertime} min over ${b.thresholdMinutes} min).`;
     overtime += b.overtimeMinutes;
   }
 
@@ -184,7 +178,7 @@ export function calculateEmployeePay(input: EmployeePayInput, settings: CompanyP
     blocks: [...blocks.values()].sort((a, b) => a.start.localeCompare(b.start)),
     warnings,
     engineVersion: ENGINE_VERSION,
-    ruleProfile: profile.id,
+    ruleProfile: settings.ruleProfile,
   };
 }
 

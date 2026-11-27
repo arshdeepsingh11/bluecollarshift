@@ -14,6 +14,9 @@ export interface MeMembership {
   role: CompanyRole;
   permissions: CompanyPermission[];
   siteScope: string[] | null; // null = all sites
+  currency?: 'CAD' | 'USD' | 'MXN';
+  timezone?: string;
+  crewLead?: boolean;
 }
 
 export interface Me {
@@ -31,6 +34,8 @@ export interface Company {
   phone: string | null;
   address: string | null;
   timezone: string;
+  currency: 'CAD' | 'USD' | 'MXN';
+  country: 'CA' | 'US' | 'MX';
   status: 'active' | 'suspended';
   createdAt: string;
 }
@@ -48,6 +53,8 @@ export interface Member {
   siteIds: string[];
   extraPermissions: string[];
   revokedPermissions: string[];
+  payrollId: string | null;
+  crewLead: boolean;
   createdAt: string;
 }
 
@@ -86,6 +93,7 @@ export interface Shift {
   status: 'scheduled' | 'cancelled';
   version: number;
   assignees: { membershipId: string; fullName: string }[];
+  openSlots: number;
   updatedAt: string;
 }
 
@@ -215,4 +223,96 @@ export interface Notification {
 export interface Paginated<T> {
   items: T[];
   nextCursor: string | null;
+}
+
+export interface ShiftRequest {
+  id: string;
+  kind: 'pickup' | 'drop' | 'swap';
+  status: 'pending_peer' | 'pending' | 'approved' | 'rejected' | 'cancelled';
+  shift: { id: string; siteName: string; startsAt: string; endsAt: string };
+  requester: { membershipId: string; fullName: string };
+  target: { membershipId: string; fullName: string } | null;
+  note: string | null;
+  decisionNote: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+export interface TimeOffRequest {
+  id: string;
+  membershipId: string;
+  fullName: string;
+  kind: 'vacation' | 'sick' | 'personal' | 'unpaid' | 'other';
+  startsOn: string;
+  endsOn: string;
+  note: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  decisionNote: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+export interface AvailabilityDay {
+  dow: number;
+  available: boolean;
+  startMinute: number | null;
+  endMinute: number | null;
+}
+
+export interface CrewMember {
+  membershipId: string;
+  fullName: string;
+  shiftId: string | null;
+  state: 'off' | 'working' | 'on_break';
+  since: string | null;
+}
+
+export interface SafetyReport {
+  id: string;
+  kind: 'incident' | 'near_miss' | 'hazard';
+  siteId: string | null;
+  siteName: string | null;
+  occurredAt: string;
+  description: string;
+  injured: boolean;
+  injuryDetails: string | null;
+  actionTaken: string | null;
+  hasPhoto: boolean;
+  reportedBy: string;
+  status: 'open' | 'closed';
+  closeNote: string | null;
+  createdAt: string;
+}
+
+export interface ToolboxTalk {
+  id: string;
+  topic: string;
+  notes: string | null;
+  siteName: string | null;
+  heldAt: string;
+  ledBy: string;
+  attendees: { membershipId: string; fullName: string; signedAt: string | null }[];
+}
+
+export interface FeedbackItem {
+  id: string;
+  kind: 'improvement' | 'complaint' | 'bug';
+  message: string | null;
+  hasAudio: boolean;
+  hasScreenshot: boolean;
+  platform: 'web' | 'ios' | 'android';
+  appVersion: string | null;
+  locale: string | null;
+  status: 'new' | 'planned' | 'done' | 'closed';
+  adminNote: string | null;
+  userEmail: string;
+  userName: string;
+  companyName: string | null;
+  createdAt: string;
+}
+
+/** A signed, short-lived upload target. PUT the file body with the given content type. */
+export interface UploadTarget {
+  url: string;
+  contentType: string;
 }
