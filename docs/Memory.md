@@ -7,7 +7,7 @@
 - API: Node + TS + Fastify, modular monolith, Socket.IO, Docker on DigitalOcean.
 - Mobile: Expo SDK 58, SQLite offline queue, foreground location only.
 - No paid chat/SMS. Messaging text-only v1.
-- Alberta rules: daily 8 h / weekly 44 h, greater of; averaging; owner configures but never below legal minimum.
+- Pay policy: each company sets daily/weekly overtime (each can be off), rate, averaging. No legal minimums enforced (Release A, ADR 0008). Markets CA/US/MX.
 - Security-question password reset removed; email recovery only. MFA required for platform admins.
 - Releases = cumulative ZIP vs the original main-folder ZIP, with manifest + delete list.
 

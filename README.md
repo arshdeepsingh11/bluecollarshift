@@ -1,6 +1,6 @@
 # Blue Collar
 
-Workforce app for trade companies — scheduling, offline clock-in, timesheets, Alberta payroll prep, messaging.
+Workforce app for trade companies — scheduling, offline clock-in, timesheets, payroll prep (each company sets its own overtime policy), 6 languages, messaging.
 
 | Folder | What | Start |
 |---|---|---|

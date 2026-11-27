@@ -1,7 +1,7 @@
 # Tasks
 
 ## Done (v1 build, 2026-11-25)
-- [x] Shared package: permissions, contracts (zod 4), Alberta payroll engine, sync rules
+- [x] Shared package: permissions, contracts (zod 4), payroll engine (company policy since Release A), sync rules
 - [x] Database: legacy quarantine, `app` schema, triggers, RLS (83 policies), performance fix
 - [x] API: 77 routes, realtime, jobs, email, push, audit, security events
 - [x] Web: public site (SEO, prerender), employer app, platform admin, MFA, brand

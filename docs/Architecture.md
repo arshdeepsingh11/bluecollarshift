@@ -12,7 +12,7 @@
 ```
 - **Modular monolith.** One API process; modules in `server/src/modules/*`.
 - **Supabase = Auth + Postgres only.** App tables live in private schema `app` — not exposed through the Supabase Data API. Clients never query the DB directly.
-- **Shared package** `shared/` — permissions, zod contracts, Alberta payroll engine, time and sync helpers. Used by API, web and mobile.
+- **Shared package** `shared/` — permissions, zod contracts, company-policy payroll engine, time and sync helpers. Used by API, web and mobile.
 
 ## 2. Repository layout
 | Path | What |

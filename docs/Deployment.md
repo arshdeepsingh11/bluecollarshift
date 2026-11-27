@@ -37,6 +37,12 @@ Set `bc_api` password (32+ random chars), store it only in the server env.
 4. `npm run build:preview` (test builds) / `npm run build:production` → TestFlight / Play internal testing → device checklist (`docs/Testing.md` §6) → submit.
 5. Store listings need: privacy policy URL (`https://bluecollarshift.com/privacy`), location purpose text (already in app config), data-safety form (location at clock events, email, name, work hours).
 
+## 5b. Release A additions
+- API (Render): add `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API Keys → secret). Never in web/mobile.
+- Web (Vercel): optional `VITE_TURNSTILE_SITE_KEY`. Mobile (EAS): optional `EXPO_PUBLIC_TURNSTILE_SITE_KEY`.
+- Turnstile order: 1) create the free Cloudflare Turnstile widget (domains: bluecollarshift.com, app., admin.) 2) deploy web + mobile with the site key 3) **then** Supabase → Authentication → Attack Protection → enable CAPTCHA (Turnstile) with the secret. Enabling it earlier blocks every login.
+- Mobile needs a new build (new native modules: expo-audio, expo-image-picker, react-native-webview).
+
 ## 6. Release checklist
 - [ ] CI green on `main` · [ ] migration applied on dev and verified · [ ] backup taken · [ ] env reviewed (no secrets in git) · [ ] `/health/ready` OK · [ ] smoke test: sign up, invite, clock in from phone, approve, payroll export.
 

@@ -114,3 +114,35 @@ Path `/realtime`, `auth: { token }`. Server events: `notification:new` (room `us
 | timesheets | GET | `/api/v1/companies/:companyId/disputes` | token |
 | timesheets | POST | `/api/v1/companies/:companyId/timesheets/:sessionId/disputes` | token |
 | timesheets | POST | `/api/v1/companies/:companyId/disputes/:disputeId/resolve` | token |
+
+## Release A routes (2026-11-27)
+All under `/api/v1/companies/:companyId`, token required. Bodies: `shared/src/schemas.ts`.
+| Module | Method | Path | Permission |
+|---|---|---|---|
+| crew | GET | `/crew` | attendance.crew or crew lead |
+| crew | POST | `/crew/events` | same; ≤ 50 people per call; each event stores `recorded_by_membership_id` |
+| requests | GET | `/open-shifts` | employee |
+| requests | GET | `/coworkers` | employee (names only) |
+| requests | GET/POST | `/shift-requests` | employee (own) / requests.manage (all) |
+| requests | POST | `/shift-requests/:id/respond` | the asked coworker |
+| requests | POST | `/shift-requests/:id/decide` | requests.manage |
+| requests | POST | `/shift-requests/:id/cancel` | requester |
+| requests | GET/POST | `/time-off` | employee (own) / requests.manage (all) |
+| requests | POST | `/time-off/:id/decide`, `/time-off/:id/cancel` | requests.manage / requester |
+| requests | GET/PUT | `/availability/me` | employee |
+| requests | GET | `/members/:memberId/availability` | requests.manage |
+| safety | GET/POST | `/safety/reports` | any member (own) / safety.manage (all) |
+| safety | POST | `/safety/reports/:id/close` | safety.manage |
+| safety | GET/POST | `/safety/talks` | safety.manage or crew lead (create) |
+| safety | POST | `/safety/talks/:id/sign` | attendee |
+| payroll | GET | `/pay-periods/:id/export.csv?format=generic\|adp\|gusto\|quickbooks\|wagepoint` | payroll.export |
+
+Not company-scoped:
+| Module | Method | Path | Auth |
+|---|---|---|---|
+| feedback | POST | `/feedback` | token; returns signed upload URLs for voice/screenshot (503 if storage not set and only voice sent) |
+| feedback | GET | `/feedback/mine` | token |
+| feedback | GET | `/admin/feedback`, `/admin/feedback/:id/files` | platform.feedback.view |
+| feedback | PATCH | `/admin/feedback/:id` | platform.feedback.manage |
+
+Uploads: the API returns a signed upload URL (valid 2 h, one file, max 5 MB, audio or image). Files are read only through signed download URLs (10 min).

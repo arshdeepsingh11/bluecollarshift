@@ -56,3 +56,16 @@ Web app built against the real API with test data: 12 screens (public, employer,
 6. Sign out with unsynced events → sign in → events sync.
 7. Push: shift assigned → notification arrives; tap opens app.
 8. Message offline → "Queued" → online → delivered once.
+
+## Release A (2026-11-27)
+Automated: shared + web 44 (incl. `translations.test.ts`: every language has every key and the same `{placeholders}`), server 92 (incl. `release-a.test.ts`, 28), mobile 19 (i18n). Web build OK; language files load only when picked (~9 KB gzip each).
+Manual checks:
+9. Switch language on login → whole app changes; after sign-in the choice is saved to the profile and used for emails/notifications.
+10. Crew lead: clock in 3 people at once → each timesheet shows "recorded by".
+11. Open shift (0 people, 2 open spots) → employee asks for it → manager approves → shift appears in their list.
+12. Swap: A asks B → B accepts → manager approves → shift moves to B.
+13. Time off approved → no late-arrival alert for that person; schedule shows a warning if assigned.
+14. Payroll export in each format opens in Excel; ADP blocked until company code + payroll IDs set.
+15. Feedback: voice note (up to 2 min) + screenshot → visible in admin Feedback, files play/open.
+16. Safety: report with photo → supervisor notified; toolbox talk → attendees sign.
+17. Turnstile: with site key set, login without the check fails; without key, login works as before.

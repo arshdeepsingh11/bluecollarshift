@@ -24,7 +24,7 @@ Migrations: `supabase/migrations/` (run in file-name order). Rollback: `supabase
 - **Tenancy:** `companies`, `memberships` (role, status, job title), `membership_sites` (supervisor scope), `invitations` (sha-256 token hash).
 - **Work:** `job_sites` (lat/lng/radius), `shifts` (version), `shift_assignments`.
 - **Attendance:** `time_events` (append-only), `work_sessions`, `adjustments` (append-only), `disputes`.
-- **Pay:** `pay_rates` (append-only, effective dates), `payroll_settings` (Alberta minimum CHECK), `pay_periods`, `payroll_records`.
+- **Pay:** `pay_rates` (append-only, effective dates), `payroll_settings` (company policy; sanity bounds CHECK only), `pay_periods`, `payroll_records`.
 - **Messaging:** `conversations` (`direct_key` unique), `conversation_members` (last_read_at), `messages` (append-only, `attachments` jsonb reserved).
 - **Notify:** `notifications` (dedupe_key, push/email status), `device_tokens`.
 - **Ops/Security:** `audit_logs`, `security_events` (both append-only), `support_access_grants`, `job_runs`, `platform_settings`.
@@ -43,6 +43,17 @@ Migrations: `supabase/migrations/` (run in file-name order). Rollback: `supabase
 | Q3 live attendance | 29 ms | 0.7 ms |
 | Q4 messages page | — | ~0.4 ms |
 Fix: RLS helpers return arrays once per query: `col = any ((select app.my_companies())::uuid[])` (InitPlan) instead of a per-row function call. Scripts: `server/tests/perf/`.
+
+## 5b. Release A (migration `20261127000500_release_a.sql`)
+- Pay policy: `rule_profile = COMPANY_POLICY`; `daily_overtime_enabled`, `weekly_overtime_enabled`, `adp_company_code`; CHECK `payroll_settings_bounds` (sanity only). Alberta-minimum CHECK dropped.
+- `companies.country` (CA/US/MX), `companies.currency` (CAD/USD/MXN). `memberships.payroll_id`, `memberships.crew_lead`. `invitations.locale`.
+- `time_events.entry_method` (self/crew/manager) + `recorded_by_membership_id` (required when not self).
+- `shifts.open_slots` (shift may have 0 people if it has open slots); included in the version trigger.
+- New tables (all RLS, company-scoped): `shift_requests`, `time_off_requests`, `availability`, `safety_reports`, `toolbox_talks`, `toolbox_talk_attendees`, `feedback` (API/system role only).
+- Helpers `app.my_led_talks()`, `app.my_attended_talks()` (SECURITY DEFINER) stop RLS recursion between talks and attendees.
+- **Bug fix:** `tg_time_event_apply` used `array_agg` that returned NULL when a session had no flags → clean clock-out failed. Now `coalesce(..., '{}')`.
+- Storage bucket `uploads` (private, 5 MB, audio/image) — created only if the `storage` schema exists.
+- Rollback: `supabase/ROLLBACK.md` (tested: existing data kept; migration re-applies cleanly).
 
 ## 6. Live dev project status
 **Not yet inspected/migrated.** The Supabase connector in this session has no access to project `zrrqixdqrsjbetltaqcd`. All migrations were verified on a local Postgres 16 with a Supabase emulation (`server/tests/fixtures/supabase-emulation.sql`) plus the original `supabase/schema.sql`, `rls_policies.sql`, `employee_invites.sql`. Procedure for the live dev project: `supabase/README.md`.

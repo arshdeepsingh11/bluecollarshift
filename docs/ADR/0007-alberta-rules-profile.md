@@ -1,3 +1,5 @@
+**Status: Superseded by ADR 0008 (Release A, 2026-11-27).**
+
 # ADR 0007 — Province rules profile, owner settings above minimum
 Status: accepted
 **Decision:** `AB_STANDARD` profile holds legal minimums; company settings validated against it in the API and by a DB CHECK constraint. Other provinces = new profile.

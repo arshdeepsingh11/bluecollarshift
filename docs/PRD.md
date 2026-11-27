@@ -1,7 +1,7 @@
 # Blue Collar — Product Requirements
 
 ## 1. What it is
-Workforce app for trade companies (construction, electrical, plumbing, HVAC). Launch market: Alberta.
+Workforce app for trade companies (construction, electrical, plumbing, HVAC). Market: Canada, United States, Mexico. Languages: English, Spanish (Mexico), French (Canada), Punjabi, Hindi, Gujarati.
 Employers schedule crews, see live attendance, approve timesheets and prepare payroll.
 Employees clock in/out from their phone — **also without signal** — see shifts, hours, pay and messages.
 
@@ -26,7 +26,7 @@ Employees clock in/out from their phone — **also without signal** — see shif
 4. Attendance: clock in/out, breaks, GPS at event time only, geofence flags, offline queue, duplicates blocked.
 5. Live attendance board (who is in, late, on break, outside site).
 6. Timesheets: original vs adjusted, adjustment reason + author, approval, employee disputes.
-7. Payroll prep: Alberta rules (8/44 greater-of, averaging, breaks, configurable week), periods, calculate → approve → mark paid, CSV export, calculation trace.
+7. Payroll prep: company-set policy (daily and/or weekly overtime on/off, thresholds, rate, averaging, paid breaks, week start; app shows "adjust as per your company policy"), periods, calculate → approve → mark paid, CSV export, calculation trace.
 8. Messaging: direct + group, text only, read receipts, offline outbox, realtime.
 9. Notifications: in-app, push (Expo), email (Resend); deduplicated.
 10. Reports: hours, attendance, adjustments (CSV); company audit log.
@@ -42,5 +42,5 @@ Tax/CPP/EI deductions, direct deposit, paid SMS/chat services, message attachmen
 - Zero cross-company data access (security test suite).
 
 ## 7. Assumptions needing confirmation
-- Legal pages and Alberta rules need review by a lawyer/payroll professional (`docs/Legal-Review.md`).
+- Legal pages need review by a lawyer/payroll professional (`docs/Legal-Review.md`).
 - Hosting region (Supabase/DigitalOcean in Canada) to confirm before launch.

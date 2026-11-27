@@ -49,3 +49,11 @@ Rate limits: tested (21st call to a 20/min public route → 429 `rate_limited`).
 4. GitHub settings to switch on (free): secret scanning + push protection, branch protection on `main` (PR + CI required), Dependabot alerts.
 5. Supabase: enable leaked-password protection if plan allows; set password min length ≥ 10.
 6. Report address `security@bluecollarshift.com` (in `/.well-known/security.txt`) must exist.
+
+## Release A
+- `SUPABASE_SERVICE_ROLE_KEY` is used **only by the API** (Render env) for Storage signed URLs. Never in `VITE_*` / `EXPO_PUBLIC_*`. Without it, file uploads are off (typed feedback still works).
+- Uploads: private bucket, server-chosen paths (`company/kind/uuid.ext`), type and size limits on bucket and API, signed links short-lived.
+- Turnstile site keys are public (`VITE_TURNSTILE_SITE_KEY`, `EXPO_PUBLIC_TURNSTILE_SITE_KEY`); the secret goes only into Supabase Auth settings.
+- CSP allows `challenges.cloudflare.com` (script, frame); `Permissions-Policy: microphone=(self)`.
+- Crew clock-in: only crew leads / attendance.crew, only people on the same shift today, each event records who entered it.
+- Feedback table has no `app_user` access; only the API (system role after permission check).

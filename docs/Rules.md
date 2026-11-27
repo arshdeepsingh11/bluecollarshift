@@ -29,7 +29,7 @@
 7. Experimental migrations go to the development Supabase project only — never production.
 8. Original clock-in/out data is never edited. Changes are separate adjustment rows with reason + author.
 9. Paid payroll is immutable. Corrections happen in a later period.
-10. Payroll settings can be more generous than Alberta law, never below it (enforced in API **and** DB).
+10. Payroll settings are the company's own policy. The app never teaches or enforces a jurisdiction's law; it only rejects impossible values (API **and** DB bounds). Changed in Release A (ADR 0008).
 11. Keep infrastructure light: no Redis/Kafka/Kubernetes/microservices unless measurement shows the need.
 12. All user-facing text goes through translation keys (`src/i18n/en.ts`, `mobile/src/i18n.ts`).
 13. Releases are cumulative ZIPs with a manifest (new / modified / deleted files).
