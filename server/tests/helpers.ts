@@ -95,6 +95,11 @@ export async function startApp(dbName: string, extraEnv: Record<string, string> 
     verify: createVerifier(config),
     mailer: { send: async () => ({ id: 'test', delivered: true }) },
     push: { enabled: false, send: async () => [] },
+    storage: {
+      enabled: true,
+      signedUpload: async (p: string) => `https://test-project.supabase.co/storage/v1/object/upload/sign/uploads/${p}?token=t`,
+      signedDownload: async (p: string) => `https://test-project.supabase.co/storage/v1/object/sign/uploads/${p}?token=d`,
+    },
     emit: (room, event, payload) => {
       emitted.push({ room, event, payload });
       forward.to?.(room, event, payload);

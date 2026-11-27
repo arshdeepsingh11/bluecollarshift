@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { normalizeLocale } from '../i18n/messages';
 import { z } from 'zod';
 import {
   acceptInviteSchema,
@@ -24,7 +25,7 @@ const INVITE_DAYS = 7;
 async function loadMembers(tx: Tx, companyId: string, includeRates: boolean, onlyId?: string): Promise<Member[]> {
   const { rows } = await tx.query(
     `select m.id, m.user_id, p.full_name, p.email, m.role, m.status, m.job_title, m.overtime_exempt,
-            m.extra_permissions, m.revoked_permissions, m.created_at,
+            m.payroll_id, m.crew_lead, m.extra_permissions, m.revoked_permissions, m.created_at,
             (select coalesce(array_agg(site_id), '{}') from app.membership_sites ms where ms.membership_id = m.id) as site_ids,
             ${includeRates ? `(select pr.hourly_rate_cents from app.pay_rates pr where pr.membership_id = m.id
                                and pr.effective_from <= current_date order by pr.effective_from desc limit 1)` : 'null'} as rate
@@ -46,12 +47,15 @@ async function loadMembers(tx: Tx, companyId: string, includeRates: boolean, onl
     siteIds: r.site_ids,
     extraPermissions: r.extra_permissions,
     revokedPermissions: r.revoked_permissions,
+    payrollId: r.payroll_id ?? null,
+    crewLead: !!r.crew_lead,
     createdAt: r.created_at,
   }));
 }
 
 export default async function memberRoutes(app: FastifyInstance) {
-  const { db, mailer, config } = app.services;
+  const { db, config } = app.services;
+  const mailer = { send: (m: Parameters<typeof app.services.mailer.send>[0]) => app.services.mailer.send(m) };
 
   app.get('/companies/:companyId/members', async (req) => {
     const a = actorOf(req);
@@ -95,10 +99,12 @@ export default async function memberRoutes(app: FastifyInstance) {
         `update app.memberships set role = coalesce($3, role), job_title = case when $4::boolean then $5 else job_title end,
                 status = coalesce($6, status), overtime_exempt = coalesce($7, overtime_exempt),
                 extra_permissions = coalesce($8, extra_permissions), revoked_permissions = coalesce($9, revoked_permissions),
-                deactivated_at = case when $6 = 'inactive' then now() when $6 = 'active' then null else deactivated_at end
+                deactivated_at = case when $6 = 'inactive' then now() when $6 = 'active' then null else deactivated_at end,
+                payroll_id = case when $10::boolean then $11 else payroll_id end, crew_lead = coalesce($12, crew_lead)
           where id = $1 and company_id = $2`,
         [membershipId, companyId, body.role ?? null, body.jobTitle !== undefined, body.jobTitle ?? null, body.status ?? null,
-          body.overtimeExempt ?? null, body.extraPermissions ?? null, body.revokedPermissions ?? null],
+          body.overtimeExempt ?? null, body.extraPermissions ?? null, body.revokedPermissions ?? null,
+          body.payrollId !== undefined, body.payrollId ?? null, body.crewLead ?? null],
       );
       if (body.siteIds) {
         await tx.query(`delete from app.membership_sites where membership_id = $1`, [membershipId]);
@@ -184,15 +190,17 @@ export default async function memberRoutes(app: FastifyInstance) {
       // Replace any previous open invitation for the same email.
       await tx.query(`update app.invitations set revoked_at = now() where company_id = $1 and email = $2 and accepted_at is null and revoked_at is null`, [companyId, body.email]);
       const { rows } = await tx.query(
-        `insert into app.invitations (company_id, email, full_name, role, hourly_rate_cents, site_ids, token_hash, expires_at, invited_by)
-         values ($1, $2, $3, $4, $5, $6, $7, now() + make_interval(days => $8), $9) returning id, email, full_name, role, expires_at, created_at`,
-        [companyId, body.email, body.fullName, body.role, body.hourlyRate !== undefined ? toCents(body.hourlyRate) : null, body.siteIds, hash, INVITE_DAYS, a.userId],
+        `insert into app.invitations (company_id, email, full_name, role, hourly_rate_cents, site_ids, token_hash, expires_at, invited_by, locale)
+         values ($1, $2, $3, $4, $5, $6, $7, now() + make_interval(days => $8), $9, $10) returning id, email, full_name, role, expires_at, created_at, locale`,
+        [companyId, body.email, body.fullName, body.role, body.hourlyRate !== undefined ? toCents(body.hourlyRate) : null, body.siteIds, hash, INVITE_DAYS, a.userId,
+          normalizeLocale(body.locale ?? a.locale)],
       );
       await auditTx(tx, { companyId, actorUserId: a.userId, action: 'invitation.created', targetType: 'invitation', targetId: rows[0].id, metadata: { email: body.email, role: body.role }, ...ctx(req) });
       return rows[0];
     });
     const url = `${config.APP_URL}/invite?token=${encodeURIComponent(token)}`;
-    await mailer.send({ to: body.email, ...templates.invitation({ companyName: m.companyName, inviterName: a.fullName ?? 'Your employer', role: body.role, url, expiresAt: inv.expires_at }) });
+    const tz = (await db.asSystem((tx) => tx.query(`select timezone from app.companies where id = $1`, [companyId]))).rows[0]?.timezone ?? 'UTC';
+    await mailer.send({ to: body.email, ...templates.invitation({ companyName: m.companyName, inviterName: a.fullName ?? m.companyName, role: body.role, url, expiresAt: inv.expires_at, locale: normalizeLocale(inv.locale), timeZone: tz }) });
     return reply.status(201).send({ id: inv.id, email: inv.email, fullName: inv.full_name, role: inv.role, expiresAt: inv.expires_at, acceptedAt: null, revokedAt: null, createdAt: inv.created_at });
   });
 
@@ -244,8 +252,8 @@ export default async function memberRoutes(app: FastifyInstance) {
         throw forbidden('This invitation was sent to a different email address.');
       }
       await tx.query(
-        `insert into app.profiles (user_id, email, full_name) values ($1, $2, $3) on conflict (user_id) do nothing`,
-        [a.userId, a.email, body.fullName ?? inv.full_name],
+        `insert into app.profiles (user_id, email, full_name, locale) values ($1, $2, $3, $4) on conflict (user_id) do nothing`,
+        [a.userId, a.email, body.fullName ?? inv.full_name, inv.locale ?? 'en'],
       );
       const existing = (await tx.query(`select id from app.memberships where company_id = $1 and user_id = $2`, [inv.company_id, a.userId])).rows[0];
       if (existing) throw conflict('You are already a member of this company.');

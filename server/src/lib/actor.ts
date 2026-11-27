@@ -20,6 +20,9 @@ export interface ActorMembership {
   permissions: Set<CompanyPermission>;
   /** null = all sites; otherwise the only sites this member may manage. */
   siteScope: string[] | null;
+  currency: string;
+  timezone: string;
+  crewLead: boolean;
 }
 
 export interface Actor {
@@ -59,6 +62,7 @@ export async function loadActor(db: Db, claims: AuthClaims): Promise<Actor> {
               coalesce(json_agg(json_build_object(
                 'membershipId', m.id, 'companyId', c.id, 'companyName', c.name, 'companyStatus', c.status,
                 'role', m.role, 'extra', m.extra_permissions, 'revoked', m.revoked_permissions,
+                'currency', c.currency, 'timezone', c.timezone, 'crewLead', m.crew_lead,
                 'sites', (select coalesce(json_agg(ms.site_id), '[]'::json) from app.membership_sites ms where ms.membership_id = m.id)
               ) order by c.name) filter (where m.id is not null), '[]') as memberships
          from app.profiles p
@@ -103,6 +107,9 @@ export async function loadActor(db: Db, claims: AuthClaims): Promise<Actor> {
             extra: string[];
             revoked: string[];
             sites: string[];
+            currency: string;
+            timezone: string;
+            crewLead: boolean;
           }[];
         }
       | undefined;
@@ -129,6 +136,9 @@ export async function loadActor(db: Db, claims: AuthClaims): Promise<Actor> {
         role: m.role,
         permissions: effectiveCompanyPermissions(m.role, m.extra, m.revoked),
         siteScope: m.sites.length > 0 || isAlwaysSiteScoped(m.role) ? m.sites : null,
+        currency: m.currency ?? 'CAD',
+        timezone: m.timezone ?? 'UTC',
+        crewLead: !!m.crewLead,
       })),
     platform:
       result?.platform_role && result.platform_status === 'active'

@@ -227,8 +227,10 @@ describe('database-level protections (API bypass)', () => {
     await expect(su.query(`delete from app.audit_logs`)).rejects.toThrow(/append-only/);
     await expect(su.query(`truncate app.time_events cascade`)).rejects.toThrow(/append-only/);
   });
-  it('database rejects payroll settings below the legal minimum', async () => {
-    await expect(su.query(`update app.payroll_settings set daily_threshold_minutes = 600 where company_id = $1`, [A])).rejects.toThrow(/payroll_settings_ab_minimums/);
+  it('database accepts any company overtime policy but rejects impossible values', async () => {
+    await su.query(`update app.payroll_settings set daily_threshold_minutes = 600, weekly_threshold_minutes = 3000, overtime_multiplier = 1.25 where company_id = $1`, [A]);
+    await expect(su.query(`update app.payroll_settings set daily_threshold_minutes = 1500 where company_id = $1`, [A])).rejects.toThrow(/payroll_settings_bounds/);
+    await expect(su.query(`update app.payroll_settings set overtime_multiplier = 0.5 where company_id = $1`, [A])).rejects.toThrow(/payroll_settings_bounds/);
   });
 });
 

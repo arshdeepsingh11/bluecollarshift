@@ -4,6 +4,7 @@ import { createVerifier } from './auth';
 import { buildApp, type Services } from './app';
 import { createMailer } from './services/email';
 import { createPushSender } from './services/push';
+import { createStorage } from './services/storage';
 import { attachRealtime } from './realtime';
 import { startScheduler } from './jobs/scheduler';
 import { Metrics } from './lib/metrics';
@@ -20,11 +21,13 @@ async function main() {
     verify: createVerifier(config),
     mailer: createMailer(config, { info: () => undefined, error: () => undefined }),
     push: createPushSender(config),
+    storage: createStorage(config, { error: () => undefined }),
     emit: (room, event, payload) => io?.to(room).emit(event, payload),
     metrics,
   };
   const app = await buildApp(services);
   services.mailer = createMailer(config, app.log);
+  services.storage = createStorage(config, app.log);
 
   await app.listen({ port: config.PORT, host: config.HOST });
   io = attachRealtime(app.server, services);

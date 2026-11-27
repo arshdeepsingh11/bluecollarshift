@@ -12,6 +12,7 @@ import { loadActor, type Actor } from './lib/actor';
 import { auditDetached, securityEvent } from './lib/audit';
 import type { Mailer } from './services/email';
 import type { PushSender } from './services/push';
+import type { Storage } from './services/storage';
 import type { RealtimeEmit } from './services/notify';
 import { Metrics } from './lib/metrics';
 
@@ -21,6 +22,7 @@ export interface Services {
   verify: TokenVerifier;
   mailer: Mailer;
   push: PushSender;
+  storage: Storage;
   emit: RealtimeEmit;
   metrics: Metrics;
 }
@@ -81,6 +83,7 @@ export async function buildApp(services: Services): Promise<FastifyInstance> {
     origin: (origin, cb) => cb(null, !origin || allowed.has(origin)),
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-Id', 'Idempotency-Key'],
+    exposedHeaders: ['Content-Disposition', 'X-Request-Id'],
     maxAge: 600,
   });
   if (!config.RATE_LIMITS_ENABLED) {
@@ -170,6 +173,10 @@ export async function buildApp(services: Services): Promise<FastifyInstance> {
     import('./modules/reports'),
     import('./modules/admin'),
     import('./modules/ops'),
+    import('./modules/crew'),
+    import('./modules/requests'),
+    import('./modules/safety'),
+    import('./modules/feedback'),
   ]);
   await app.register(
     async (api) => {

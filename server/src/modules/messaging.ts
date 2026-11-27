@@ -142,7 +142,7 @@ export default async function messagingRoutes(app: FastifyInstance) {
       )).rows.map((r) => r.user_id as string);
       await tx.query('set local role app_system');
       // Lock-screen text never includes message content.
-      await notify(tx, { userIds: recipients, companyId, type: 'message.new', title: 'New message', body: `New message from ${a.fullName ?? 'a colleague'}`, data: { conversationId, companyId }, dedupeKey: `message:${msg.id}` }, emit);
+      await notify(tx, { userIds: recipients, companyId, type: 'message.new', msg: { key: 'msg.new', vars: { name: a.fullName ?? '' } }, data: { conversationId, companyId }, dedupeKey: `message:${msg.id}` }, emit);
       await tx.query('set local role app_user');
       return { msg, duplicate: false, recipients };
     });

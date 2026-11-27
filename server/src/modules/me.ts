@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Me } from '@bluecollar/shared';
+import { LOCALES, type Me } from '@bluecollar/shared';
 import { actorOf, parse } from '../app';
 import { invalidateActor } from '../lib/actor';
 import { auditSystemTx } from '../lib/audit';
@@ -25,6 +25,9 @@ export default async function meRoutes(app: FastifyInstance) {
         role: m.role,
         permissions: [...m.permissions],
         siteScope: m.siteScope,
+        currency: m.currency as 'CAD' | 'USD' | 'MXN',
+        timezone: m.timezone,
+        crewLead: m.crewLead,
       })),
       platform: a.platform
         ? { role: a.platform.role, permissions: [...a.platform.permissions], mfaVerified: a.claims.aal === 'aal2' }
@@ -38,7 +41,7 @@ export default async function meRoutes(app: FastifyInstance) {
   app.patch('/me', async (req) => {
     const a = actorOf(req);
     const body = parse(
-      z.object({ fullName: z.string().trim().min(2).max(120).optional(), locale: z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/).optional() }),
+      z.object({ fullName: z.string().trim().min(2).max(120).optional(), locale: z.enum(LOCALES).optional() }),
       req.body,
     );
     const row = await db.asUser(a.userId, async (tx) => {

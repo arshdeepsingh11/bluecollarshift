@@ -1,8 +1,10 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import {
   blocksEndingInPeriod,
   calculateEmployeePay,
   payPeriodSchema,
+  PAYROLL_EXPORT_FORMATS,
   type PayPeriod,
   type PayrollRecord,
 } from '@bluecollar/shared';
@@ -162,7 +164,7 @@ export default async function payrollRoutes(app: FastifyInstance) {
       const recs = (await tx.query(`update app.payroll_records pr set status = 'paid', paid_at = now() from app.memberships m where pr.pay_period_id = $1 and m.id = pr.membership_id returning m.user_id`, [periodId])).rows;
       await auditTx(tx, { companyId, actorUserId: a.userId, action: 'payroll.paid', targetType: 'pay_period', targetId: periodId, metadata: { records: recs.length }, ...ctx(req) });
       await tx.query('set local role app_system');
-      await notify(tx, { userIds: recs.map((r) => r.user_id), companyId, type: 'payroll.paid', title: 'Pay summary available', body: 'Your pay summary for the latest period is ready.', data: { periodId, companyId }, dedupeKey: `payroll.paid:${periodId}` }, emit);
+      await notify(tx, { userIds: recs.map((r) => r.user_id), companyId, type: 'payroll.paid', msg: { key: 'pay.ready' }, data: { periodId, companyId }, dedupeKey: `payroll.paid:${periodId}` }, emit);
       await tx.query('set local role app_user');
     });
     return { ok: true };
@@ -182,29 +184,84 @@ export default async function payrollRoutes(app: FastifyInstance) {
     return { items: rows.map(mapRecord) };
   });
 
+  /**
+   * Export a pay period for a payroll provider. Formats (see docs/API.md):
+   *  generic    — every number, for spreadsheets or any provider
+   *  adp        — ADP Workforce Now "Paydata import": Co Code, Batch ID, File #, Reg Hours, O/T Hours (file PR<code>EPI.csv)
+   *  gusto      — Gusto Smart Import: first/last name, regular and overtime hours
+   *  quickbooks — QuickBooks Online "time activities" template, one line per employee per day
+   *  wagepoint  — hours sheet to enter in Wagepoint (Wagepoint has no open hours-import format)
+   * Hours only. No taxes or deductions are calculated.
+   */
   app.get('/companies/:companyId/pay-periods/:periodId/export.csv', async (req, reply) => {
     const a = actorOf(req);
     const { companyId, periodId } = parse(companyIdParams('periodId'), req.params);
     requireCompany(a, companyId, 'payroll.view');
-    const { period, rows } = await db.asUser(a.userId, async (tx) => {
+    const { format } = parse(z.object({ format: z.enum(PAYROLL_EXPORT_FORMATS).default('generic') }), req.query);
+    const { period, rows, settings, currency } = await db.asUser(a.userId, async (tx) => {
       const period = (await tx.query(`select starts_on, ends_on, pay_date from app.pay_periods where id = $1 and company_id = $2`, [periodId, companyId])).rows[0];
       if (!period) throw notFound();
       const rows = (await tx.query(
-        `select pr.*, p.full_name, p.email from app.payroll_records pr join app.memberships m on m.id = pr.membership_id join app.profiles p on p.user_id = m.user_id
+        `select pr.*, p.full_name, p.email, m.payroll_id from app.payroll_records pr join app.memberships m on m.id = pr.membership_id join app.profiles p on p.user_id = m.user_id
           where pr.pay_period_id = $1 order by p.full_name`, [periodId])).rows;
-      await auditTx(tx, { companyId, actorUserId: a.userId, action: 'payroll.exported', targetType: 'pay_period', targetId: periodId, ...ctx(req) });
-      return { period, rows };
+      const settings = (await tx.query(`select adp_company_code from app.payroll_settings where company_id = $1`, [companyId])).rows[0];
+      const currency = (await tx.query(`select currency from app.companies where id = $1`, [companyId])).rows[0]?.currency ?? 'CAD';
+      await auditTx(tx, { companyId, actorUserId: a.userId, action: 'payroll.exported', targetType: 'pay_period', targetId: periodId, metadata: { format }, ...ctx(req) });
+      return { period, rows, settings, currency };
     });
-    const csv = toCsv(
-      ['Employee', 'Email', 'Period start', 'Period end', 'Pay date', 'Regular hours', 'Overtime hours', 'Hourly rate', 'OT multiplier', 'Gross regular', 'Gross overtime', 'Gross total', 'Status', 'Unapproved timesheets'],
-      rows.map((r) => [r.full_name, r.email, period.starts_on, period.ends_on, period.pay_date, minutesToHours(r.regular_minutes), minutesToHours(r.overtime_minutes),
-        (r.hourly_rate_cents / 100).toFixed(2), Number(r.overtime_multiplier).toFixed(2), (r.gross_regular_cents / 100).toFixed(2), (r.gross_overtime_cents / 100).toFixed(2),
-        (r.gross_total_cents / 100).toFixed(2), r.status, r.pending_sessions]),
-    );
+    const hrs = (m: number) => minutesToHours(m).toFixed(2);
+    const split = (name: string) => {
+      const parts = String(name).trim().split(/\s+/);
+      return { first: parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] ?? '', last: parts.length > 1 ? parts[parts.length - 1]! : '' };
+    };
+    let csv: string;
+    let filename = `payroll-${period.starts_on}-${period.ends_on}-${format}.csv`;
+    switch (format) {
+      case 'adp': {
+        const code = settings?.adp_company_code as string | null;
+        if (!code) throw badRequest('Add your ADP company code in Settings > Pay before exporting for ADP.');
+        const missing = rows.filter((r) => !r.payroll_id).map((r) => r.full_name);
+        if (missing.length) throw badRequest(`Add the ADP File # (payroll ID) for: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}`);
+        const batch = String(period.ends_on).replace(/-/g, '').slice(2); // YYMMDD, 6 digits
+        csv = toCsv(['Co Code', 'Batch ID', 'File #', 'Employee Name', 'Reg Hours', 'O/T Hours'],
+          rows.map((r) => [code, batch, r.payroll_id, r.full_name, hrs(r.regular_minutes), hrs(r.overtime_minutes)]));
+        filename = `PR${code.length === 2 ? `${code}_` : code}EPI.csv`;
+        break;
+      }
+      case 'gusto':
+        csv = toCsv(['First name', 'Last name', 'Email', 'Employee ID', 'Regular hours', 'Overtime hours'],
+          rows.map((r) => { const n = split(r.full_name); return [n.first, n.last, r.email, r.payroll_id ?? '', hrs(r.regular_minutes), hrs(r.overtime_minutes)]; }));
+        break;
+      case 'quickbooks': {
+        const lines: unknown[][] = [];
+        for (const r of rows) {
+          const days = ((r.trace as { days?: { date: string; workedMinutes: number }[] })?.days ?? [])
+            .filter((d) => d.date >= period.starts_on && d.date <= period.ends_on && d.workedMinutes > 0);
+          for (const d of days) {
+            const h = Math.floor(d.workedMinutes / 60);
+            const mm = String(d.workedMinutes % 60).padStart(2, '0');
+            lines.push([d.date, r.full_name, `${h}:${mm}`, `Blue Collar hours ${period.starts_on} to ${period.ends_on}`, 'NotBillable']);
+          }
+        }
+        csv = toCsv(['TxnDate', 'Name', 'Time', 'Description', 'BillableStatus'], lines);
+        break;
+      }
+      case 'wagepoint':
+        csv = toCsv(['Employee', 'Employee ID', 'Email', 'Regular hours', 'Overtime hours', 'Overtime rate', 'Pay date'],
+          rows.map((r) => [r.full_name, r.payroll_id ?? '', r.email, hrs(r.regular_minutes), hrs(r.overtime_minutes), `${Number(r.overtime_multiplier).toFixed(2)}x`, period.pay_date]));
+        break;
+      default:
+        csv = `# Hours and gross pay estimate (${currency}) only. Blue Collar does not calculate taxes or deductions.\r\n` + toCsv(
+          ['Employee', 'Email', 'Employee ID', 'Period start', 'Period end', 'Pay date', 'Regular hours', 'Overtime hours', 'Hourly rate', 'OT multiplier', 'Gross regular', 'Gross overtime', 'Gross total', 'Currency', 'Status', 'Unapproved timesheets'],
+          rows.map((r) => [r.full_name, r.email, r.payroll_id ?? '', period.starts_on, period.ends_on, period.pay_date, hrs(r.regular_minutes), hrs(r.overtime_minutes),
+            (r.hourly_rate_cents / 100).toFixed(2), Number(r.overtime_multiplier).toFixed(2), (r.gross_regular_cents / 100).toFixed(2), (r.gross_overtime_cents / 100).toFixed(2),
+            (r.gross_total_cents / 100).toFixed(2), currency, r.status, r.pending_sessions]),
+        );
+    }
     return reply
       .header('content-type', 'text/csv; charset=utf-8')
-      .header('content-disposition', `attachment; filename="payroll-${period.starts_on}-${period.ends_on}.csv"`)
-      .send(`# Gross pay estimate only. Blue Collar does not calculate statutory deductions (CPP, EI, income tax).\r\n${csv}`);
+      .header('content-disposition', `attachment; filename="${filename}"`)
+      .send(csv);
   });
 
   /** Employee's own pay history. */

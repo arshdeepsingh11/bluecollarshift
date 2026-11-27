@@ -15,9 +15,11 @@ import type { RealtimeEmit } from '../services/notify';
 export async function applyEvents(
   tx: Tx,
   userId: string,
-  m: ActorMembership,
+  m: Pick<ActorMembership, 'membershipId' | 'companyId'>,
   events: TimeEventInput[],
   emit?: RealtimeEmit,
+  /** Set when a crew lead records the event for this crew member (requires the system role). */
+  recordedBy?: string,
 ): Promise<ServerEventResult[]> {
   const results: ServerEventResult[] = [];
   const sorted = [...events].sort((a, b) => Date.parse(a.deviceTime) - Date.parse(b.deviceTime));
@@ -39,11 +41,12 @@ export async function applyEvents(
         continue;
       }
       const { rows } = await tx.query(
-        `insert into app.time_events (id, company_id, membership_id, shift_id, type, occurred_at, device_time, source, lat, lng, accuracy_m, device_id, created_by)
-         values ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, $12)
+        `insert into app.time_events (id, company_id, membership_id, shift_id, type, occurred_at, device_time, source, lat, lng, accuracy_m, device_id, created_by,
+                                      entry_method, recorded_by_membership_id)
+         values ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          returning session_id, flags, review_status, server_received_at`,
         [ev.id, m.companyId, m.membershipId, ev.shiftId ?? null, ev.type, ev.deviceTime, ev.offline ? 'offline' : 'online',
-          ev.lat ?? null, ev.lng ?? null, ev.accuracyM ?? null, ev.deviceId, userId],
+          ev.lat ?? null, ev.lng ?? null, ev.accuracyM ?? null, ev.deviceId, userId, recordedBy ? 'crew' : 'self', recordedBy ?? null],
       );
       await tx.query('release savepoint ev');
       const r = rows[0];
@@ -71,16 +74,15 @@ export async function applyEvents(
     emit?.(`company:${m.companyId}:staff`, 'attendance:update', { membershipId: m.membershipId });
   }
   if (reviewSessions.size) {
-    await tx.query('set local role app_system');
+    if (!recordedBy) await tx.query('set local role app_system');
     const staff = await staffUserIds(tx, m.companyId, ['owner', 'admin', 'manager', 'supervisor']);
     for (const sid of reviewSessions) {
       await notify(tx, {
-        userIds: staff, companyId: m.companyId, type: 'attendance.review', title: 'Attendance needs review',
-        body: 'An attendance record was flagged and needs your review.', data: { sessionId: sid, companyId: m.companyId },
+        userIds: staff, companyId: m.companyId, type: 'attendance.review', msg: { key: 'att.review' }, data: { sessionId: sid, companyId: m.companyId },
         dedupeKey: `attendance.review:${sid}`,
       }, emit);
     }
-    await tx.query('set local role app_user');
+    if (!recordedBy) await tx.query('set local role app_user');
   }
   return results;
 }

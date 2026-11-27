@@ -4,7 +4,6 @@ import {
   registerCompanySchema,
   updateCompanySchema,
   validatePayrollSettings,
-  RULE_PROFILES,
   type RuleProfileId,
 } from '@bluecollar/shared';
 import { actorOf, parse } from '../app';
@@ -18,7 +17,9 @@ export function settingsFromRow(r: Record<string, unknown>, timezone: string) {
     ruleProfile: r.rule_profile as RuleProfileId,
     timezone,
     workWeekStartDow: Number(r.work_week_start_dow),
+    dailyOvertimeEnabled: r.daily_overtime_enabled !== false,
     dailyThresholdMinutes: Number(r.daily_threshold_minutes),
+    weeklyOvertimeEnabled: r.weekly_overtime_enabled !== false,
     weeklyThresholdMinutes: Number(r.weekly_threshold_minutes),
     overtimeMultiplier: Number(r.overtime_multiplier),
     paidBreaks: Boolean(r.paid_breaks),
@@ -28,6 +29,15 @@ export function settingsFromRow(r: Record<string, unknown>, timezone: string) {
     overtimeAgreementBanking: Boolean(r.overtime_banking),
     payFrequency: r.pay_frequency as 'weekly' | 'biweekly' | 'semimonthly' | 'monthly',
     payPeriodAnchor: String(r.pay_period_anchor),
+    adpCompanyCode: (r.adp_company_code as string | null) ?? null,
+  };
+}
+
+const COMPANY_COLS = 'id, name, phone, address, timezone, currency, country, status, created_at';
+function mapCompany(r: Record<string, unknown>) {
+  return {
+    id: r.id, name: r.name, phone: r.phone, address: r.address, timezone: r.timezone,
+    currency: r.currency, country: r.country, status: r.status, createdAt: r.created_at,
   };
 }
 
@@ -53,9 +63,9 @@ export default async function companyRoutes(app: FastifyInstance) {
         [a.userId, a.email, body.fullName],
       );
       const { rows } = await tx.query(
-        `insert into app.companies (name, phone, timezone, created_by) values ($1, $2, $3, $4)
-         returning id, name, phone, address, timezone, status, created_at`,
-        [body.companyName, body.phone ?? null, body.timezone, a.userId],
+        `insert into app.companies (name, phone, timezone, currency, country, created_by) values ($1, $2, $3, $4, $5, $6)
+         returning ${COMPANY_COLS}`,
+        [body.companyName, body.phone ?? null, body.timezone, body.currency, body.country, a.userId],
       );
       const c = rows[0]!;
       await tx.query(`insert into app.memberships (company_id, user_id, role) values ($1, $2, 'owner')`, [c.id, a.userId]);
@@ -64,10 +74,7 @@ export default async function companyRoutes(app: FastifyInstance) {
       return c;
     });
     invalidateActor(a.userId);
-    return reply.status(201).send({
-      id: company.id, name: company.name, phone: company.phone, address: company.address,
-      timezone: company.timezone, status: company.status, createdAt: company.created_at,
-    });
+    return reply.status(201).send(mapCompany(company));
   });
 
   app.get('/companies/:companyId', async (req) => {
@@ -75,9 +82,9 @@ export default async function companyRoutes(app: FastifyInstance) {
     const { companyId } = parse(companyParams, req.params);
     requireCompany(a, companyId);
     const row = await db.asUser(a.userId, async (tx) =>
-      (await tx.query(`select id, name, phone, address, timezone, status, created_at from app.companies where id = $1`, [companyId])).rows[0],
+      (await tx.query(`select ${COMPANY_COLS} from app.companies where id = $1`, [companyId])).rows[0],
     );
-    return { id: row.id, name: row.name, phone: row.phone, address: row.address, timezone: row.timezone, status: row.status, createdAt: row.created_at };
+    return mapCompany(row);
   });
 
   app.patch('/companies/:companyId', async (req) => {
@@ -93,18 +100,20 @@ export default async function companyRoutes(app: FastifyInstance) {
       }
     }
     const row = await db.asUser(a.userId, async (tx) => {
-      const before = (await tx.query(`select name, phone, address, timezone from app.companies where id = $1`, [companyId])).rows[0];
+      const before = (await tx.query(`select name, phone, address, timezone, currency, country from app.companies where id = $1`, [companyId])).rows[0];
       const { rows } = await tx.query(
         `update app.companies set name = coalesce($2, name), phone = case when $3::boolean then $4 else phone end,
-                address = case when $5::boolean then $6 else address end, timezone = coalesce($7, timezone)
-          where id = $1 returning id, name, phone, address, timezone, status, created_at`,
-        [companyId, body.name ?? null, body.phone !== undefined, body.phone ?? null, body.address !== undefined, body.address ?? null, body.timezone ?? null],
+                address = case when $5::boolean then $6 else address end, timezone = coalesce($7, timezone),
+                currency = coalesce($8, currency), country = coalesce($9, country)
+          where id = $1 returning ${COMPANY_COLS}`,
+        [companyId, body.name ?? null, body.phone !== undefined, body.phone ?? null, body.address !== undefined, body.address ?? null, body.timezone ?? null,
+          body.currency ?? null, body.country ?? null],
       );
       await auditTx(tx, { companyId, actorUserId: a.userId, action: 'company.updated', targetType: 'company', targetId: companyId, metadata: { before, after: body }, ...ctx(req) });
       return rows[0];
     });
     invalidateActor();
-    return { id: row.id, name: row.name, phone: row.phone, address: row.address, timezone: row.timezone, status: row.status, createdAt: row.created_at };
+    return mapCompany(row);
   });
 
   app.get('/companies/:companyId/payroll-settings', async (req) => {
@@ -120,8 +129,7 @@ export default async function companyRoutes(app: FastifyInstance) {
         )
       ).rows[0],
     );
-    const profile = RULE_PROFILES[r.rule_profile as RuleProfileId];
-    return { ...settingsFromRow(r, r.timezone), profile: { name: profile.name, legalReviewNotes: profile.legalReviewNotes, maxDailyThresholdMinutes: profile.maxDailyThresholdMinutes, maxWeeklyThresholdMinutes: profile.maxWeeklyThresholdMinutes, minOvertimeMultiplier: profile.minOvertimeMultiplier } };
+    return settingsFromRow(r, r.timezone);
   });
 
   app.put('/companies/:companyId/payroll-settings', async (req) => {
@@ -130,18 +138,20 @@ export default async function companyRoutes(app: FastifyInstance) {
     const mem = requireCompany(a, companyId, 'payroll.manage');
     const s = parse(payrollSettingsSchema, req.body);
     const violations = validatePayrollSettings(s);
-    if (violations.length) throw badRequest('These settings are below the legal minimum.', violations);
+    if (violations.length) throw badRequest('Some pay settings are not valid.', violations);
     await db.asUser(a.userId, async (tx) => {
       const before = (await tx.query(`select * from app.payroll_settings where company_id = $1`, [companyId])).rows[0];
       await tx.query(
         `update app.payroll_settings set rule_profile = $2, work_week_start_dow = $3, daily_threshold_minutes = $4,
            weekly_threshold_minutes = $5, overtime_multiplier = $6, paid_breaks = $7, averaging_enabled = $8,
            averaging_weeks = $9, averaging_anchor = $10, overtime_banking = $11, pay_frequency = $12, pay_period_anchor = $13,
-           updated_by = $14, updated_at = now()
+           updated_by = $14, updated_at = now(), daily_overtime_enabled = $15, weekly_overtime_enabled = $16,
+           adp_company_code = case when $17::boolean then $18 else adp_company_code end
          where company_id = $1`,
         [companyId, s.ruleProfile, s.workWeekStartDow, s.dailyThresholdMinutes, s.weeklyThresholdMinutes, s.overtimeMultiplier,
           s.paidBreaks, s.averaging?.enabled ?? false, s.averaging?.enabled ? s.averaging.periodWeeks : null,
-          s.averaging?.enabled ? s.averaging.anchorDate : null, s.overtimeAgreementBanking, s.payFrequency, s.payPeriodAnchor, a.userId],
+          s.averaging?.enabled ? s.averaging.anchorDate : null, s.overtimeAgreementBanking, s.payFrequency, s.payPeriodAnchor, a.userId,
+          s.dailyOvertimeEnabled, s.weeklyOvertimeEnabled, s.adpCompanyCode !== undefined, s.adpCompanyCode?.toUpperCase() ?? null],
       );
       if (s.timezone) {
         const cur = (await tx.query(`select timezone from app.companies where id = $1`, [companyId])).rows[0];

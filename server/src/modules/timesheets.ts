@@ -129,8 +129,7 @@ export default async function timesheetRoutes(app: FastifyInstance) {
         metadata: { adjustmentId: adj.id, original: { start: s.original_start, end: s.original_end, breakMinutes: s.original_break_minutes }, adjusted: b, afterPayment: adj.after_payment }, ...ctx(req) });
       await tx.query('set local role app_system');
       await notify(tx, {
-        userIds: [s.user_id], companyId, type: 'timesheet.adjusted', title: 'Your hours were adjusted',
-        body: `${a.fullName ?? 'Your manager'} changed a timesheet. Reason: ${b.reason.slice(0, 140)}`,
+        userIds: [s.user_id], companyId, type: 'timesheet.adjusted', msg: { key: 'ts.adjusted', vars: { name: a.fullName ?? '', text: b.reason.slice(0, 140) } },
         data: { sessionId, adjustmentId: adj.id, companyId }, dedupeKey: `timesheet.adjusted:${adj.id}`, email: true,
       }, emit);
       await tx.query('set local role app_user');
@@ -156,7 +155,7 @@ export default async function timesheetRoutes(app: FastifyInstance) {
       if (b.decision === 'rejected' && rows.length) {
         const users = (await tx.query(`select distinct user_id from app.memberships where id = any($1)`, [rows.map((r) => r.membership_id)])).rows.map((r) => r.user_id);
         await tx.query('set local role app_system');
-        await notify(tx, { userIds: users, companyId, type: 'timesheet.rejected', title: 'Timesheet needs correction', body: b.note ?? 'A timesheet was sent back for correction.', data: { companyId }, dedupeKey: `timesheet.rejected:${rows.map((r) => r.id).join(',').slice(0, 200)}` }, emit);
+        await notify(tx, { userIds: users, companyId, type: 'timesheet.rejected', msg: { key: 'ts.rejected', text: b.note }, data: { companyId }, dedupeKey: `timesheet.rejected:${rows.map((r) => r.id).join(',').slice(0, 200)}` }, emit);
         await tx.query('set local role app_user');
       }
       return rows.map((r) => r.id as string);
@@ -204,7 +203,7 @@ export default async function timesheetRoutes(app: FastifyInstance) {
       await auditTx(tx, { companyId, actorUserId: a.userId, action: 'dispute.opened', targetType: 'work_session', targetId: sessionId, metadata: { disputeId: d.id }, ...ctx(req) });
       await tx.query('set local role app_system');
       const staff = await staffUserIds(tx, companyId, ['owner', 'admin', 'manager'], s.site_id);
-      await notify(tx, { userIds: staff, companyId, type: 'dispute.opened', title: 'Timesheet disputed', body: `${a.fullName ?? 'An employee'} disputed a timesheet.`, data: { sessionId, disputeId: d.id, companyId }, dedupeKey: `dispute.opened:${d.id}`, email: true }, emit);
+      await notify(tx, { userIds: staff, companyId, type: 'dispute.opened', msg: { key: 'dispute.opened', vars: { name: a.fullName ?? '' } }, data: { sessionId, disputeId: d.id, companyId }, dedupeKey: `dispute.opened:${d.id}`, email: true }, emit);
       await tx.query('set local role app_user');
       return d.id as string;
     });
@@ -227,7 +226,7 @@ export default async function timesheetRoutes(app: FastifyInstance) {
       await tx.query(`update app.disputes set status = $2, resolution_note = $3, resolved_by = $4, resolved_at = now() where id = $1`, [disputeId, b.status, b.resolutionNote, a.userId]);
       await auditTx(tx, { companyId, actorUserId: a.userId, action: `dispute.${b.status}`, targetType: 'dispute', targetId: disputeId, metadata: { note: b.resolutionNote }, ...ctx(req) });
       await tx.query('set local role app_system');
-      await notify(tx, { userIds: [d.user_id], companyId, type: 'dispute.closed', title: b.status === 'resolved' ? 'Dispute resolved' : 'Dispute declined', body: b.resolutionNote.slice(0, 200), data: { sessionId: d.session_id, disputeId, companyId }, dedupeKey: `dispute.closed:${disputeId}`, email: true }, emit);
+      await notify(tx, { userIds: [d.user_id], companyId, type: 'dispute.closed', msg: { key: b.status === 'resolved' ? 'dispute.resolved' : 'dispute.declined', vars: { text: b.resolutionNote.slice(0, 200) } }, data: { sessionId: d.session_id, disputeId, companyId }, dedupeKey: `dispute.closed:${disputeId}`, email: true }, emit);
       await tx.query('set local role app_user');
     });
     return { ok: true };

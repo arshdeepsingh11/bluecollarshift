@@ -253,7 +253,7 @@ describe('payroll', () => {
 
     const csv = await t.call(owner, 'GET', `/api/v1/companies/${C}/pay-periods/${per.body.id}/export.csv`);
     expect(csv.status).toBe(200);
-    expect(String(csv.body)).toContain('Gross pay estimate only');
+    expect(String(csv.body)).toContain('does not calculate taxes or deductions');
   });
 });
 
