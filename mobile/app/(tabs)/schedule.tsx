@@ -47,7 +47,7 @@ export default function Schedule() {
           <Text style={{ fontWeight: '700', fontSize: 16 }}>{fmtDay(s.startsAt)}</Text>
           <Text style={{ fontSize: 16 }}>{fmtTime(s.startsAt)} – {fmtTime(s.endsAt)}</Text>
           <Text style={{ fontWeight: '600' }}>{s.siteName}</Text>
-          {s.status === 'cancelled' && <Badge tone="error" text="Cancelled" />}
+          {s.status === 'cancelled' && <Badge tone="error" text={t('cancelled')} />}
           {s.breakMinutes > 0 && <Muted>Break: {s.breakMinutes} min</Muted>}
           {s.instructions && <Banner tone="info" text={`${t('instructions')}: ${s.instructions}`} />}
           {s.site?.lat != null && s.site?.lng != null && (

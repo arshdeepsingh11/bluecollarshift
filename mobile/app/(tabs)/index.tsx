@@ -126,7 +126,7 @@ export default function Today() {
 
       {status && (
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Card style={{ flex: 1 }}><Muted>Today</Muted><Text style={{ fontSize: 22, fontWeight: '700' }}>{fmtMinutes(status.minutesToday)}</Text></Card>
+          <Card style={{ flex: 1 }}><Muted>{t('today')}</Muted><Text style={{ fontSize: 22, fontWeight: '700' }}>{fmtMinutes(status.minutesToday)}</Text></Card>
           <Card style={{ flex: 1 }}><Muted>7 days</Muted><Text style={{ fontSize: 22, fontWeight: '700' }}>{fmtMinutes(status.minutesLast7Days)}</Text></Card>
         </View>
       )}

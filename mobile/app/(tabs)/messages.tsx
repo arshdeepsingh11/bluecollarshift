@@ -53,7 +53,7 @@ export default function Messages() {
       {offline && <Banner tone="warning" text={t('offline')} />}
       {err && <Banner tone="error" text={err} />}
       <Card>
-        {!convs.length && <Muted>No conversations yet.</Muted>}
+        {!convs.length && <Muted>{t('no_conversations')}</Muted>}
         {convs.map((c) => (
           <Row
             key={c.id}
@@ -66,7 +66,7 @@ export default function Messages() {
       </Card>
       {contacts.filter((c) => !withConv.has(c.membershipId)).length > 0 && (
         <Card>
-          <Muted>Start a conversation</Muted>
+          <Muted>{t('start_conversation')}</Muted>
           {contacts.filter((c) => !withConv.has(c.membershipId)).map((c) => (
             <Row key={c.membershipId} title={c.fullName} subtitle={c.jobTitle ?? c.role} onPress={() => void start(c)} />
           ))}

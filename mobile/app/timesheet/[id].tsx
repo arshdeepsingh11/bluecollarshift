@@ -48,10 +48,10 @@ export default function TimesheetDetail() {
   return (
     <Screen>
       <Card>
-        <Text style={{ fontSize: 18, fontWeight: '700' }}>{d.siteName ?? 'No site'}</Text>
+        <Text style={{ fontSize: 18, fontWeight: '700' }}>{d.siteName ?? t('no_site')}</Text>
         <Text>{fmtDateTime(d.effectiveStart)} – {fmtTime(d.effectiveEnd)}</Text>
         <Text>Paid: {fmtMinutes(d.paidMinutes)} · Break {d.effectiveBreakMinutes} min</Text>
-        {d.approvalStatus === 'approved' ? <Badge tone="success" text="Approved" /> : <Badge text="Pending approval" />}
+        {d.approvalStatus === 'approved' ? <Badge tone="success" text={t('approved')} /> : <Badge text={t('pending_approval')} />}
       </Card>
 
       {d.adjusted && (
@@ -70,7 +70,7 @@ export default function TimesheetDetail() {
       )}
 
       <Card>
-        <Text style={{ fontWeight: '700' }}>Clock events</Text>
+        <Text style={{ fontWeight: '700' }}>{t('clock_events')}</Text>
         {d.events.map((e) => (
           <Muted key={e.id}>
             {fmtTime(e.occurredAt)} · {e.type.replace('_', ' ')} · {e.source}

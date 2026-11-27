@@ -10,6 +10,8 @@ import { appVersion, registerPush, unregisterPush } from '../lib/device';
 import { isOlder } from '../lib/version';
 import { closeSocket } from '../lib/realtime';
 import { flushOutbox } from '../lib/outbox';
+import { flushCrewQueue } from '../lib/crew';
+import { hasSavedLocale, loadSavedLocale, normalizeLocale, saveLocale, setLocaleNow, type LocaleCode } from '../i18n';
 
 interface Ctx {
   session: Session | null;
@@ -21,6 +23,8 @@ interface Ctx {
   maintenance: boolean;
   setCompany: (id: string) => void;
   refresh: () => Promise<void>;
+  locale: LocaleCode;
+  changeLocale: (l: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -33,6 +37,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [offlineProfile, setOfflineProfile] = useState(false);
   const [server, setServer] = useState({ updateRequired: false, maintenance: false });
+  const [locale, setLocaleState] = useState<LocaleCode>('en');
+
+  const applyLocale = useCallback(async (l: string) => {
+    await saveLocale(l);
+    setLocaleState(normalizeLocale(l));
+  }, []);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -46,12 +56,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const loadMe = useCallback(async () => {
     try {
       const m = await api<Me>('/me');
+      // Profile language wins, unless the user picked one on this phone before signing in.
+      const profile = normalizeLocale(m.locale);
+      if (await hasSavedLocale()) {
+        const saved = await loadSavedLocale();
+        if (saved !== profile && profile === 'en') void api('/me', { method: 'PATCH', body: { locale: saved } }).catch(() => undefined);
+        else if (saved !== profile) await applyLocale(profile);
+      } else {
+        await applyLocale(profile);
+      }
       setMe(m);
       setOfflineProfile(false);
       await cacheSet('me', m);
       engine.authBlocked = false;
       void engine.sync();
       void flushOutbox();
+      void flushCrewQueue();
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setMe(null);
@@ -64,9 +84,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, []);
+  }, [applyLocale]);
 
   useEffect(() => {
+    void loadSavedLocale().then((l) => {
+      setLocaleNow(l);
+      setLocaleState(l);
+    });
     const stopTriggers = startSyncTriggers();
     void loadConfig();
     void registerBackgroundSync();
@@ -89,6 +113,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         void supabase.auth.startAutoRefresh();
         void engine.sync();
         void flushOutbox();
+        void flushCrewQueue();
         void loadConfig();
       } else void supabase.auth.stopAutoRefresh();
     });
@@ -108,6 +133,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         session, me, membership, loading, offlineProfile, ...server,
         setCompany: setCompanyId,
         refresh: loadMe,
+        locale,
+        changeLocale: async (l: string) => {
+          await applyLocale(l);
+          if (me) await api('/me', { method: 'PATCH', body: { locale: normalizeLocale(l) } }).catch(() => undefined);
+        },
         signOut: async () => {
           await unregisterPush();
           closeSocket();

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from './lib/config';
+import { intlLocale } from './i18n';
 
 export function Screen({ children, refreshing, onRefresh, scroll = true }: { children: ReactNode; refreshing?: boolean; onRefresh?: () => void; scroll?: boolean }) {
   return (
@@ -94,7 +95,8 @@ export const s = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: theme.text2, marginBottom: 4 },
 });
 
-export const fmtTime = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' }) : '—');
-export const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' });
+export const fmtTime = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString(intlLocale(), { hour: 'numeric', minute: '2-digit' }) : '—');
+export const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(intlLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
+export const fmtMoney = (cents: number, currency = 'CAD') => (cents / 100).toLocaleString(intlLocale(), { style: 'currency', currency });
 export const fmtDateTime = (iso: string | null | undefined) => (iso ? `${fmtDay(iso)} ${fmtTime(iso)}` : '—');
 export const fmtMinutes = (m: number | null | undefined) => (m === null || m === undefined ? '—' : `${Math.floor(m / 60)}h ${String(Math.abs(m % 60)).padStart(2, '0')}m`);

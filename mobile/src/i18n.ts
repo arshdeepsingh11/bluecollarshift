@@ -1,4 +1,9 @@
-/** Mobile strings (English). Same key style as web; add languages by adding a dictionary. */
+/**
+ * Phone app strings in 6 languages (all bundled so the app works offline).
+ * The language follows the user's profile; it can be changed in More > Language.
+ */
+import * as SecureStore from 'expo-secure-store';
+
 const en = {
   sign_in: 'Sign in',
   email: 'Email',
@@ -7,6 +12,7 @@ const en = {
   enter_email_first: 'Enter your email above first, then tap Forgot password.',
   reset_sent: 'If an account exists for that email, a reset link is on its way.',
   invalid_login: 'Email or password is incorrect.',
+  captcha_failed: 'Please complete the security check and try again.',
   not_employee: 'This app is for employees. Managers: use app.bluecollarshift.com.',
   today: 'Today',
   schedule: 'Schedule',
@@ -39,9 +45,14 @@ const en = {
   dispute_hint: 'Explain what is wrong (your manager will be notified)',
   dispute_sent: 'Dispute sent.',
   pay: 'Pay history',
-  pay_note: 'Gross estimate. Deductions (CPP, EI, tax) are not included.',
+  pay_note: 'Gross estimate. Taxes and deductions are not included.',
+  no_pay: 'No approved pay periods yet.',
   notifications: 'Notifications',
+  mark_all_read: 'Mark all read',
+  nothing_yet: 'Nothing yet.',
   sync_status: 'Attendance sync',
+  no_events: 'No clock events on this phone yet.',
+  recorded_offline: 'Recorded offline',
   sign_out: 'Sign out',
   version: 'Version {v}',
   type_message: 'Message',
@@ -53,11 +64,409 @@ const en = {
   update_required: 'Please update Blue Collar from the App Store or Google Play to continue. Your saved clock events are kept and will sync after the update.',
   maintenance: 'Blue Collar is under maintenance. You can still clock in — events are saved on this phone and sync later.',
   privacy: 'Location is used only when you clock in/out or take a break. Blue Collar never tracks you in the background.',
+  timesheet: 'Timesheet',
+  no_site: 'No site',
+  approved: 'Approved',
+  pending_approval: 'Pending approval',
+  pending_short: 'Pending',
+  clock_events: 'Clock events',
+  switch_company: 'Switch company',
+  no_conversations: 'No conversations yet.',
+  start_conversation: 'Start a conversation',
+  cancelled: 'Cancelled',
+  no_work: 'No work recorded yet.',
+  disputed: 'Disputed',
+  review: 'Review',
+  working: 'Working',
+  language: 'Language',
+  save: 'Save',
+  saved: 'Saved.',
+  cancel: 'Cancel',
+  close: 'Close',
+  note: 'Note',
+  from: 'From',
+  to: 'To',
+  error_generic: 'Something went wrong. Please try again.',
+
+  feedback: 'Send feedback',
+  fb_intro: 'Tell us what to improve, what’s wrong, or report a bug. Type it or record a voice note.',
+  fb_improvement: 'Idea',
+  fb_complaint: 'Complaint',
+  fb_bug: 'Bug',
+  fb_placeholder: 'What happened, or what would make your work easier?',
+  fb_record: 'Record voice note',
+  fb_recording: 'Recording… {s}s (max {max}s)',
+  fb_stop: 'Stop',
+  fb_play: 'Play',
+  fb_delete: 'Delete recording',
+  fb_screenshot: 'Add screenshot',
+  fb_remove: 'Remove picture',
+  fb_send: 'Send',
+  fb_thanks: 'Thank you! Our team reads every message.',
+  fb_mic_denied: 'Microphone access is off. Turn it on in Settings, or type your message.',
+  fb_upload_failed: 'Your message was sent, but the attachment could not be uploaded.',
+  fb_need_text: 'Type a message or record a voice note.',
+  fb_mine: 'My feedback',
+  fb_status_new: 'Received',
+  fb_status_planned: 'Planned',
+  fb_status_done: 'Done',
+  fb_status_closed: 'Closed',
+
+  requests: 'Requests & time off',
+  open_shifts: 'Open shifts you can take',
+  no_open: 'No open shifts right now.',
+  open_n: '{n} open',
+  pick_up: 'I want this shift',
+  pickup_sent: 'Sent. Your manager will confirm.',
+  my_shifts: 'My next shifts',
+  cant_work: 'Can’t work it',
+  ask_coworker: 'Ask a coworker',
+  give_up: 'Give it up',
+  swap_hint: 'Your coworker accepts first, then your manager approves.',
+  drop_hint: 'Your manager decides. The shift becomes open for others.',
+  choose_coworker: 'Choose a coworker',
+  send_request: 'Send request',
+  swap_sent: 'Sent to your coworker.',
+  drop_sent: 'Sent to your manager.',
+  request_cancelled: 'Request cancelled.',
+  swap_ask: '{name} asked you to take their shift at {site} on {when}.',
+  accept: 'Accept',
+  decline: 'Decline',
+  accepted: 'Accepted. Your manager will confirm.',
+  declined: 'Declined.',
+  time_off: 'Time off',
+  request_time_off: 'Request time off',
+  toff_sent: 'Request sent to your manager.',
+  vacation: 'Vacation',
+  sick: 'Sick',
+  personal: 'Personal',
+  unpaid: 'Unpaid',
+  other: 'Other',
+  status_pending_peer: 'Waiting for coworker',
+  status_pending: 'Waiting for manager',
+  status_approved: 'Approved',
+  status_rejected: 'Declined',
+  status_cancelled: 'Cancelled',
+  availability: 'When I can work',
+  avail_hint: 'Your manager sees this when making the schedule.',
+  any_time: 'Any time',
+  only_between: 'Only between',
+  not_available: 'Not available',
+  dow0: 'Sunday',
+  dow1: 'Monday',
+  dow2: 'Tuesday',
+  dow3: 'Wednesday',
+  dow4: 'Thursday',
+  dow5: 'Friday',
+  dow6: 'Saturday',
+  date_hint: 'YYYY-MM-DD',
+  time_hint: 'HH:MM',
+
+  crew: 'Crew clock-in',
+  crew_hint: 'Clock in or out several people at once.',
+  crew_empty: 'No one on your shift to clock in right now.',
+  select_all: 'Select all',
+  clear: 'Clear',
+  state_off: 'Not working',
+  state_working: 'Working',
+  state_on_break: 'On break',
+  crew_in: 'Clock in ({n})',
+  crew_out: 'Clock out ({n})',
+  crew_done: 'Done for {n} people.',
+  crew_queued: 'No signal: saved on this phone for {n} people. Will send automatically.',
+
+  safety: 'Safety',
+  report_problem: 'Report a problem',
+  incident: 'Incident',
+  near_miss: 'Near miss',
+  hazard: 'Hazard',
+  what_happened: 'What happened?',
+  someone_hurt: 'Someone was hurt',
+  injury_details: 'Injury details',
+  action_taken: 'Action taken',
+  add_photo: 'Add photo',
+  take_photo: 'Take photo',
+  send_report: 'Send report',
+  report_sent: 'Report sent. Your supervisor has been notified.',
+  to_sign: 'Toolbox talks to sign',
+  i_attended: 'I attended',
+  signed: 'Signed. Thank you.',
+  my_reports: 'My reports',
+  no_reports: 'No reports.',
+  status_open: 'Open',
+  status_closed: 'Closed',
 } as const;
 
 export type Key = keyof typeof en;
+type Dict = Record<Key, string>;
+
+const es: Dict = {
+  sign_in: 'Iniciar sesión', email: 'Correo', password: 'Contraseña', forgot: '¿Olvidaste tu contraseña?',
+  enter_email_first: 'Escribe tu correo arriba y luego toca “¿Olvidaste tu contraseña?”.', reset_sent: 'Si existe una cuenta con ese correo, te llegará un enlace para restablecerla.',
+  invalid_login: 'El correo o la contraseña no son correctos.', captcha_failed: 'Completa la verificación de seguridad e inténtalo de nuevo.',
+  not_employee: 'Esta app es para empleados. Encargados: usen app.bluecollarshift.com.', today: 'Hoy', schedule: 'Horario', hours: 'Horas', messages: 'Mensajes', more: 'Más',
+  clock_in: 'Registrar entrada', clock_out: 'Registrar salida', start_break: 'Iniciar descanso', end_break: 'Terminar descanso', working_since: 'Trabajando desde {time}', on_break: 'En descanso',
+  not_working: 'No has registrado tu entrada', offline: 'Sin conexión: tus registros se guardan en este teléfono y se enviarán automáticamente.', pending: '{n} por sincronizar',
+  needs_review: '{n} necesitan revisión del encargado', rejected: '{n} no se pudieron registrar — toca para ver', saved_offline: 'Guardado en este teléfono. Se enviará cuando tengas conexión.',
+  synced: 'Registrado', location_off: 'La ubicación está apagada: se guardó sin ubicación y podría revisarse.', next_shift: 'Próximo turno', no_shifts: 'No tienes turnos próximos',
+  directions: 'Cómo llegar', instructions: 'Instrucciones', original: 'Original', adjusted: 'Ajustado', reason: 'Motivo', by: 'Por {name}', dispute: 'Disputar',
+  dispute_hint: 'Explica qué está mal (se avisará a tu encargado)', dispute_sent: 'Disputa enviada.', pay: 'Historial de pago', pay_note: 'Estimado bruto. No incluye impuestos ni deducciones.',
+  no_pay: 'Aún no hay periodos de pago aprobados.', notifications: 'Notificaciones', mark_all_read: 'Marcar todo como leído', nothing_yet: 'Nada por ahora.', sync_status: 'Sincronización de asistencia',
+  no_events: 'Aún no hay registros en este teléfono.', recorded_offline: 'Registrado sin conexión', sign_out: 'Cerrar sesión', version: 'Versión {v}', type_message: 'Mensaje', send: 'Enviar',
+  queued: 'En espera: se envía al tener conexión', failed: 'No enviado', last_updated: 'Actualizado {time}', retry: 'Reintentar',
+  update_required: 'Actualiza Blue Collar desde App Store o Google Play para continuar. Tus registros guardados se conservan y se enviarán después.',
+  maintenance: 'Blue Collar está en mantenimiento. Aún puedes registrar tu entrada: se guarda en este teléfono y se envía después.',
+  privacy: 'La ubicación se usa solo al registrar entrada, salida o descanso. Blue Collar nunca te rastrea en segundo plano.',
+  timesheet: 'Hoja de horas', no_site: 'Sin obra', approved: 'Aprobado', pending_approval: 'Pendiente de aprobación', pending_short: 'Pendiente', clock_events: 'Registros',
+  switch_company: 'Cambiar de empresa', no_conversations: 'Aún no hay conversaciones.', start_conversation: 'Iniciar conversación', cancelled: 'Cancelado', no_work: 'Aún no hay trabajo registrado.',
+  disputed: 'En disputa', review: 'Revisar', working: 'Trabajando', language: 'Idioma', save: 'Guardar', saved: 'Guardado.', cancel: 'Cancelar', close: 'Cerrar', note: 'Nota', from: 'Desde', to: 'Hasta',
+  error_generic: 'Algo salió mal. Inténtalo de nuevo.',
+  feedback: 'Enviar comentarios', fb_intro: 'Dinos qué mejorar, qué está mal o reporta una falla. Escríbelo o graba una nota de voz.', fb_improvement: 'Idea', fb_complaint: 'Queja', fb_bug: 'Falla',
+  fb_placeholder: '¿Qué pasó o qué te facilitaría el trabajo?', fb_record: 'Grabar nota de voz', fb_recording: 'Grabando… {s}s (máx. {max}s)', fb_stop: 'Detener', fb_play: 'Escuchar',
+  fb_delete: 'Borrar grabación', fb_screenshot: 'Agregar captura', fb_remove: 'Quitar imagen', fb_send: 'Enviar', fb_thanks: '¡Gracias! Nuestro equipo lee todos los mensajes.',
+  fb_mic_denied: 'El micrófono está desactivado. Actívalo en Ajustes o escribe tu mensaje.', fb_upload_failed: 'Tu mensaje se envió, pero el archivo no se pudo subir.', fb_need_text: 'Escribe un mensaje o graba una nota de voz.', fb_mine: 'Mis comentarios', fb_status_new: 'Recibido', fb_status_planned: 'Planeado', fb_status_done: 'Hecho', fb_status_closed: 'Cerrado',
+  requests: 'Solicitudes y días libres', open_shifts: 'Turnos disponibles', no_open: 'No hay turnos disponibles ahora.', open_n: '{n} disponibles', pick_up: 'Quiero este turno',
+  pickup_sent: 'Enviado. Tu encargado lo confirmará.', my_shifts: 'Mis próximos turnos', cant_work: 'No puedo trabajarlo', ask_coworker: 'Pedir a un compañero', give_up: 'Dejarlo',
+  swap_hint: 'Primero acepta tu compañero y luego aprueba tu encargado.', drop_hint: 'Tu encargado decide. El turno queda disponible para otros.', choose_coworker: 'Elige un compañero',
+  send_request: 'Enviar solicitud', swap_sent: 'Enviado a tu compañero.', drop_sent: 'Enviado a tu encargado.', request_cancelled: 'Solicitud cancelada.',
+  swap_ask: '{name} te pidió tomar su turno en {site} el {when}.', accept: 'Aceptar', decline: 'Rechazar', accepted: 'Aceptado. Tu encargado lo confirmará.', declined: 'Rechazado.',
+  time_off: 'Días libres', request_time_off: 'Pedir días libres', toff_sent: 'Solicitud enviada a tu encargado.', vacation: 'Vacaciones', sick: 'Enfermedad', personal: 'Personal', unpaid: 'Sin goce de sueldo', other: 'Otro',
+  status_pending_peer: 'Esperando al compañero', status_pending: 'Esperando al encargado', status_approved: 'Aprobado', status_rejected: 'Rechazado', status_cancelled: 'Cancelado',
+  availability: 'Cuándo puedo trabajar', avail_hint: 'Tu encargado lo ve al hacer el horario.', any_time: 'Cualquier hora', only_between: 'Solo entre', not_available: 'No disponible',
+  dow0: 'Domingo', dow1: 'Lunes', dow2: 'Martes', dow3: 'Miércoles', dow4: 'Jueves', dow5: 'Viernes', dow6: 'Sábado', date_hint: 'AAAA-MM-DD', time_hint: 'HH:MM',
+  crew: 'Entrada de cuadrilla', crew_hint: 'Registra la entrada o salida de varias personas a la vez.', crew_empty: 'No hay nadie de tu turno para registrar ahora.', select_all: 'Seleccionar todos', clear: 'Limpiar',
+  state_off: 'No trabaja', state_working: 'Trabajando', state_on_break: 'En descanso', crew_in: 'Entrada ({n})', crew_out: 'Salida ({n})', crew_done: 'Listo para {n} personas.',
+  crew_queued: 'Sin señal: guardado en este teléfono para {n} personas. Se enviará automáticamente.',
+  safety: 'Seguridad', report_problem: 'Reportar un problema', incident: 'Incidente', near_miss: 'Casi accidente', hazard: 'Peligro', what_happened: '¿Qué pasó?', someone_hurt: 'Alguien se lastimó',
+  injury_details: 'Detalles de la lesión', action_taken: 'Qué se hizo', add_photo: 'Agregar foto', take_photo: 'Tomar foto', send_report: 'Enviar reporte', report_sent: 'Reporte enviado. Se avisó a tu supervisor.',
+  to_sign: 'Charlas de seguridad por firmar', i_attended: 'Asistí', signed: 'Firmado. Gracias.', my_reports: 'Mis reportes', no_reports: 'Sin reportes.', status_open: 'Abierto', status_closed: 'Cerrado',
+};
+
+const fr: Dict = {
+  sign_in: 'Se connecter', email: 'Courriel', password: 'Mot de passe', forgot: 'Mot de passe oublié?',
+  enter_email_first: 'Entre ton courriel ci-dessus, puis touche « Mot de passe oublié? ».', reset_sent: 'Si un compte existe pour ce courriel, un lien de réinitialisation est en route.',
+  invalid_login: 'Le courriel ou le mot de passe est incorrect.', captcha_failed: 'Complète la vérification de sécurité et réessaie.',
+  not_employee: 'Cette appli est pour les employés. Gestionnaires : utilisez app.bluecollarshift.com.', today: 'Aujourd’hui', schedule: 'Horaire', hours: 'Heures', messages: 'Messages', more: 'Plus',
+  clock_in: 'Pointer l’arrivée', clock_out: 'Pointer le départ', start_break: 'Commencer la pause', end_break: 'Terminer la pause', working_since: 'Au travail depuis {time}', on_break: 'En pause',
+  not_working: 'Tu n’es pas pointé', offline: 'Hors ligne : tes pointages sont gardés sur ce téléphone et seront envoyés automatiquement.', pending: '{n} en attente d’envoi',
+  needs_review: '{n} à vérifier par le gestionnaire', rejected: '{n} n’ont pas pu être enregistrés — touche pour voir', saved_offline: 'Gardé sur ce téléphone. Sera envoyé au retour du réseau.',
+  synced: 'Enregistré', location_off: 'La localisation est désactivée : enregistré sans position, peut être vérifié.', next_shift: 'Prochain quart', no_shifts: 'Aucun quart à venir',
+  directions: 'Itinéraire', instructions: 'Consignes', original: 'Original', adjusted: 'Ajusté', reason: 'Raison', by: 'Par {name}', dispute: 'Contester',
+  dispute_hint: 'Explique ce qui ne va pas (ton gestionnaire sera avisé)', dispute_sent: 'Contestation envoyée.', pay: 'Historique de paie', pay_note: 'Estimation brute. Impôts et retenues non inclus.',
+  no_pay: 'Aucune période de paie approuvée.', notifications: 'Notifications', mark_all_read: 'Tout marquer comme lu', nothing_yet: 'Rien pour l’instant.', sync_status: 'Synchronisation des pointages',
+  no_events: 'Aucun pointage sur ce téléphone.', recorded_offline: 'Enregistré hors ligne', sign_out: 'Se déconnecter', version: 'Version {v}', type_message: 'Message', send: 'Envoyer',
+  queued: 'En attente : envoyé dès le retour du réseau', failed: 'Non envoyé', last_updated: 'Mis à jour {time}', retry: 'Réessayer',
+  update_required: 'Mets à jour Blue Collar dans l’App Store ou Google Play pour continuer. Tes pointages gardés seront envoyés après la mise à jour.',
+  maintenance: 'Blue Collar est en maintenance. Tu peux quand même pointer : c’est gardé sur ce téléphone et envoyé plus tard.',
+  privacy: 'La localisation sert seulement quand tu pointes ou prends une pause. Blue Collar ne te suit jamais en arrière-plan.',
+  timesheet: 'Feuille de temps', no_site: 'Aucun chantier', approved: 'Approuvé', pending_approval: 'En attente d’approbation', pending_short: 'En attente', clock_events: 'Pointages',
+  switch_company: 'Changer d’entreprise', no_conversations: 'Aucune conversation.', start_conversation: 'Commencer une conversation', cancelled: 'Annulé', no_work: 'Aucun travail enregistré.',
+  disputed: 'Contesté', review: 'À vérifier', working: 'Au travail', language: 'Langue', save: 'Enregistrer', saved: 'Enregistré.', cancel: 'Annuler', close: 'Fermer', note: 'Note', from: 'Du', to: 'Au',
+  error_generic: 'Une erreur est survenue. Réessaie.',
+  feedback: 'Envoyer un commentaire', fb_intro: 'Dis-nous quoi améliorer, ce qui ne va pas, ou signale un bogue. Écris-le ou enregistre un message vocal.', fb_improvement: 'Idée', fb_complaint: 'Plainte', fb_bug: 'Bogue',
+  fb_placeholder: 'Que s’est-il passé, ou qu’est-ce qui faciliterait ton travail?', fb_record: 'Enregistrer un message vocal', fb_recording: 'Enregistrement… {s} s (max {max} s)', fb_stop: 'Arrêter', fb_play: 'Écouter',
+  fb_delete: 'Supprimer l’enregistrement', fb_screenshot: 'Ajouter une capture', fb_remove: 'Retirer l’image', fb_send: 'Envoyer', fb_thanks: 'Merci! Notre équipe lit chaque message.',
+  fb_mic_denied: 'Le micro est désactivé. Active-le dans Réglages ou écris ton message.', fb_upload_failed: 'Ton message est envoyé, mais la pièce jointe n’a pas pu être téléversée.', fb_need_text: 'Écris un message ou enregistre un message vocal.', fb_mine: 'Mes commentaires', fb_status_new: 'Reçu', fb_status_planned: 'Prévu', fb_status_done: 'Fait', fb_status_closed: 'Fermé',
+  requests: 'Demandes et congés', open_shifts: 'Quarts disponibles', no_open: 'Aucun quart disponible pour l’instant.', open_n: '{n} disponible(s)', pick_up: 'Je veux ce quart',
+  pickup_sent: 'Envoyé. Ton gestionnaire va confirmer.', my_shifts: 'Mes prochains quarts', cant_work: 'Je ne peux pas', ask_coworker: 'Demander à un collègue', give_up: 'Le céder',
+  swap_hint: 'Ton collègue accepte d’abord, puis ton gestionnaire approuve.', drop_hint: 'Ton gestionnaire décide. Le quart devient disponible pour les autres.', choose_coworker: 'Choisis un collègue',
+  send_request: 'Envoyer la demande', swap_sent: 'Envoyé à ton collègue.', drop_sent: 'Envoyé à ton gestionnaire.', request_cancelled: 'Demande annulée.',
+  swap_ask: '{name} te demande de prendre son quart à {site} le {when}.', accept: 'Accepter', decline: 'Refuser', accepted: 'Accepté. Ton gestionnaire va confirmer.', declined: 'Refusé.',
+  time_off: 'Congés', request_time_off: 'Demander un congé', toff_sent: 'Demande envoyée à ton gestionnaire.', vacation: 'Vacances', sick: 'Maladie', personal: 'Personnel', unpaid: 'Sans solde', other: 'Autre',
+  status_pending_peer: 'En attente du collègue', status_pending: 'En attente du gestionnaire', status_approved: 'Approuvé', status_rejected: 'Refusé', status_cancelled: 'Annulé',
+  availability: 'Quand je peux travailler', avail_hint: 'Ton gestionnaire le voit en faisant l’horaire.', any_time: 'N’importe quand', only_between: 'Seulement entre', not_available: 'Pas disponible',
+  dow0: 'Dimanche', dow1: 'Lundi', dow2: 'Mardi', dow3: 'Mercredi', dow4: 'Jeudi', dow5: 'Vendredi', dow6: 'Samedi', date_hint: 'AAAA-MM-JJ', time_hint: 'HH:MM',
+  crew: 'Pointage d’équipe', crew_hint: 'Pointe l’arrivée ou le départ de plusieurs personnes à la fois.', crew_empty: 'Personne de ton quart à pointer pour l’instant.', select_all: 'Tout sélectionner', clear: 'Effacer',
+  state_off: 'Pas au travail', state_working: 'Au travail', state_on_break: 'En pause', crew_in: 'Arrivée ({n})', crew_out: 'Départ ({n})', crew_done: 'Fait pour {n} personnes.',
+  crew_queued: 'Pas de réseau : gardé sur ce téléphone pour {n} personnes. Envoi automatique.',
+  safety: 'Sécurité', report_problem: 'Signaler un problème', incident: 'Incident', near_miss: 'Quasi-accident', hazard: 'Danger', what_happened: 'Que s’est-il passé?', someone_hurt: 'Quelqu’un s’est blessé',
+  injury_details: 'Détails de la blessure', action_taken: 'Mesure prise', add_photo: 'Ajouter une photo', take_photo: 'Prendre une photo', send_report: 'Envoyer le rapport', report_sent: 'Rapport envoyé. Ton superviseur est avisé.',
+  to_sign: 'Causeries sécurité à signer', i_attended: 'J’étais présent', signed: 'Signé. Merci.', my_reports: 'Mes rapports', no_reports: 'Aucun rapport.', status_open: 'Ouvert', status_closed: 'Fermé',
+};
+
+const pa: Dict = {
+  sign_in: 'ਸਾਈਨ ਇਨ', email: 'ਈਮੇਲ', password: 'ਪਾਸਵਰਡ', forgot: 'ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ?',
+  enter_email_first: 'ਪਹਿਲਾਂ ਉੱਪਰ ਆਪਣੀ ਈਮੇਲ ਲਿਖੋ, ਫਿਰ “ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ?” ਦਬਾਓ।', reset_sent: 'ਜੇ ਇਸ ਈਮੇਲ ਦਾ ਖਾਤਾ ਹੈ, ਤਾਂ ਰੀਸੈੱਟ ਲਿੰਕ ਭੇਜ ਦਿੱਤਾ ਗਿਆ ਹੈ।',
+  invalid_login: 'ਈਮੇਲ ਜਾਂ ਪਾਸਵਰਡ ਗਲਤ ਹੈ।', captcha_failed: 'ਸੁਰੱਖਿਆ ਜਾਂਚ ਪੂਰੀ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+  not_employee: 'ਇਹ ਐਪ ਕਰਮਚਾਰੀਆਂ ਲਈ ਹੈ। ਮੈਨੇਜਰ: app.bluecollarshift.com ਵਰਤੋ।', today: 'ਅੱਜ', schedule: 'ਸ਼ਡਿਊਲ', hours: 'ਘੰਟੇ', messages: 'ਸੁਨੇਹੇ', more: 'ਹੋਰ',
+  clock_in: 'ਕਲੌਕ-ਇਨ', clock_out: 'ਕਲੌਕ-ਆਊਟ', start_break: 'ਬ੍ਰੇਕ ਸ਼ੁਰੂ', end_break: 'ਬ੍ਰੇਕ ਖ਼ਤਮ', working_since: '{time} ਤੋਂ ਕੰਮ ’ਤੇ', on_break: 'ਬ੍ਰੇਕ ’ਤੇ',
+  not_working: 'ਤੁਸੀਂ ਕਲੌਕ-ਇਨ ਨਹੀਂ ਹੋ', offline: 'ਨੈੱਟ ਨਹੀਂ ਹੈ — ਤੁਹਾਡੀ ਹਾਜ਼ਰੀ ਇਸ ਫ਼ੋਨ ’ਤੇ ਸੰਭਾਲੀ ਗਈ ਹੈ ਅਤੇ ਆਪਣੇ-ਆਪ ਭੇਜ ਦਿੱਤੀ ਜਾਵੇਗੀ।', pending: '{n} ਭੇਜਣੇ ਬਾਕੀ',
+  needs_review: '{n} ਦੀ ਮੈਨੇਜਰ ਜਾਂਚ ਬਾਕੀ', rejected: '{n} ਦਰਜ ਨਹੀਂ ਹੋ ਸਕੇ — ਵੇਰਵੇ ਲਈ ਦਬਾਓ', saved_offline: 'ਇਸ ਫ਼ੋਨ ’ਤੇ ਸੰਭਾਲਿਆ। ਨੈੱਟ ਆਉਣ ’ਤੇ ਭੇਜ ਦਿੱਤਾ ਜਾਵੇਗਾ।',
+  synced: 'ਦਰਜ ਹੋ ਗਿਆ', location_off: 'ਲੋਕੇਸ਼ਨ ਬੰਦ ਹੈ — ਬਿਨਾਂ ਲੋਕੇਸ਼ਨ ਦੇ ਸੰਭਾਲਿਆ ਗਿਆ, ਜਾਂਚ ਹੋ ਸਕਦੀ ਹੈ।', next_shift: 'ਅਗਲੀ ਸ਼ਿਫਟ', no_shifts: 'ਕੋਈ ਆਉਣ ਵਾਲੀ ਸ਼ਿਫਟ ਨਹੀਂ',
+  directions: 'ਰਸਤਾ', instructions: 'ਹਦਾਇਤਾਂ', original: 'ਅਸਲ', adjusted: 'ਬਦਲਿਆ', reason: 'ਕਾਰਨ', by: '{name} ਵੱਲੋਂ', dispute: 'ਇਤਰਾਜ਼',
+  dispute_hint: 'ਦੱਸੋ ਕੀ ਗਲਤ ਹੈ (ਤੁਹਾਡੇ ਮੈਨੇਜਰ ਨੂੰ ਸੂਚਨਾ ਜਾਵੇਗੀ)', dispute_sent: 'ਇਤਰਾਜ਼ ਭੇਜਿਆ ਗਿਆ।', pay: 'ਤਨਖਾਹ ਦਾ ਇਤਿਹਾਸ', pay_note: 'ਕੁੱਲ ਅੰਦਾਜ਼ਾ। ਟੈਕਸ ਅਤੇ ਕਟੌਤੀਆਂ ਸ਼ਾਮਲ ਨਹੀਂ।',
+  no_pay: 'ਅਜੇ ਕੋਈ ਮਨਜ਼ੂਰ ਤਨਖਾਹ ਪੀਰੀਅਡ ਨਹੀਂ।', notifications: 'ਸੂਚਨਾਵਾਂ', mark_all_read: 'ਸਭ ਪੜ੍ਹਿਆ ਮਾਰਕ ਕਰੋ', nothing_yet: 'ਅਜੇ ਕੁਝ ਨਹੀਂ।', sync_status: 'ਹਾਜ਼ਰੀ ਸਿੰਕ',
+  no_events: 'ਇਸ ਫ਼ੋਨ ’ਤੇ ਅਜੇ ਕੋਈ ਹਾਜ਼ਰੀ ਨਹੀਂ।', recorded_offline: 'ਬਿਨਾਂ ਨੈੱਟ ਦਰਜ', sign_out: 'ਸਾਈਨ ਆਊਟ', version: 'ਵਰਜਨ {v}', type_message: 'ਸੁਨੇਹਾ', send: 'ਭੇਜੋ',
+  queued: 'ਕਤਾਰ ਵਿੱਚ — ਨੈੱਟ ਆਉਣ ’ਤੇ ਭੇਜਿਆ ਜਾਵੇਗਾ', failed: 'ਨਹੀਂ ਭੇਜਿਆ', last_updated: '{time} ਨੂੰ ਅੱਪਡੇਟ', retry: 'ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼',
+  update_required: 'ਜਾਰੀ ਰੱਖਣ ਲਈ App Store ਜਾਂ Google Play ਤੋਂ Blue Collar ਅੱਪਡੇਟ ਕਰੋ। ਤੁਹਾਡੀ ਸੰਭਾਲੀ ਹਾਜ਼ਰੀ ਅੱਪਡੇਟ ਤੋਂ ਬਾਅਦ ਭੇਜ ਦਿੱਤੀ ਜਾਵੇਗੀ।',
+  maintenance: 'Blue Collar ਦੀ ਮੁਰੰਮਤ ਚੱਲ ਰਹੀ ਹੈ। ਤੁਸੀਂ ਫਿਰ ਵੀ ਕਲੌਕ-ਇਨ ਕਰ ਸਕਦੇ ਹੋ — ਇਹ ਫ਼ੋਨ ’ਤੇ ਸੰਭਾਲ ਕੇ ਬਾਅਦ ਵਿੱਚ ਭੇਜਿਆ ਜਾਵੇਗਾ।',
+  privacy: 'ਲੋਕੇਸ਼ਨ ਸਿਰਫ਼ ਕਲੌਕ-ਇਨ/ਆਊਟ ਜਾਂ ਬ੍ਰੇਕ ਵੇਲੇ ਵਰਤੀ ਜਾਂਦੀ ਹੈ। Blue Collar ਤੁਹਾਨੂੰ ਕਦੇ ਵੀ ਪਿੱਛੋਂ ਟ੍ਰੈਕ ਨਹੀਂ ਕਰਦਾ।',
+  timesheet: 'ਟਾਈਮਸ਼ੀਟ', no_site: 'ਕੋਈ ਸਾਈਟ ਨਹੀਂ', approved: 'ਮਨਜ਼ੂਰ', pending_approval: 'ਮਨਜ਼ੂਰੀ ਬਾਕੀ', pending_short: 'ਬਾਕੀ', clock_events: 'ਹਾਜ਼ਰੀ ਰਿਕਾਰਡ',
+  switch_company: 'ਕੰਪਨੀ ਬਦਲੋ', no_conversations: 'ਅਜੇ ਕੋਈ ਗੱਲਬਾਤ ਨਹੀਂ।', start_conversation: 'ਗੱਲਬਾਤ ਸ਼ੁਰੂ ਕਰੋ', cancelled: 'ਰੱਦ', no_work: 'ਅਜੇ ਕੋਈ ਕੰਮ ਦਰਜ ਨਹੀਂ।',
+  disputed: 'ਇਤਰਾਜ਼ ਕੀਤਾ', review: 'ਜਾਂਚ', working: 'ਕੰਮ ’ਤੇ', language: 'ਭਾਸ਼ਾ', save: 'ਸੇਵ ਕਰੋ', saved: 'ਸੇਵ ਹੋ ਗਿਆ।', cancel: 'ਰੱਦ ਕਰੋ', close: 'ਬੰਦ ਕਰੋ', note: 'ਨੋਟ', from: 'ਤੋਂ', to: 'ਤੱਕ',
+  error_generic: 'ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+  feedback: 'ਸੁਝਾਅ ਭੇਜੋ', fb_intro: 'ਦੱਸੋ ਕੀ ਸੁਧਾਰਨਾ ਹੈ, ਕੀ ਗਲਤ ਹੈ, ਜਾਂ ਕੋਈ ਖਰਾਬੀ ਦੱਸੋ। ਲਿਖੋ ਜਾਂ ਆਵਾਜ਼ ਰਿਕਾਰਡ ਕਰੋ।', fb_improvement: 'ਸੁਝਾਅ', fb_complaint: 'ਸ਼ਿਕਾਇਤ', fb_bug: 'ਖਰਾਬੀ',
+  fb_placeholder: 'ਕੀ ਹੋਇਆ, ਜਾਂ ਕਿਸ ਚੀਜ਼ ਨਾਲ ਤੁਹਾਡਾ ਕੰਮ ਸੌਖਾ ਹੋਵੇਗਾ?', fb_record: 'ਆਵਾਜ਼ ਰਿਕਾਰਡ ਕਰੋ', fb_recording: 'ਰਿਕਾਰਡ ਹੋ ਰਿਹਾ… {s} ਸਕਿੰਟ (ਵੱਧ ਤੋਂ ਵੱਧ {max})', fb_stop: 'ਰੋਕੋ', fb_play: 'ਸੁਣੋ',
+  fb_delete: 'ਰਿਕਾਰਡਿੰਗ ਮਿਟਾਓ', fb_screenshot: 'ਸਕਰੀਨਸ਼ਾਟ ਜੋੜੋ', fb_remove: 'ਤਸਵੀਰ ਹਟਾਓ', fb_send: 'ਭੇਜੋ', fb_thanks: 'ਧੰਨਵਾਦ! ਸਾਡੀ ਟੀਮ ਹਰ ਸੁਨੇਹਾ ਪੜ੍ਹਦੀ ਹੈ।',
+  fb_mic_denied: 'ਮਾਈਕ ਬੰਦ ਹੈ। ਸੈਟਿੰਗਜ਼ ਵਿੱਚ ਚਾਲੂ ਕਰੋ, ਜਾਂ ਸੁਨੇਹਾ ਲਿਖੋ।', fb_upload_failed: 'ਸੁਨੇਹਾ ਭੇਜ ਦਿੱਤਾ, ਪਰ ਫ਼ਾਈਲ ਅੱਪਲੋਡ ਨਹੀਂ ਹੋਈ।', fb_need_text: 'ਸੁਨੇਹਾ ਲਿਖੋ ਜਾਂ ਆਵਾਜ਼ ਰਿਕਾਰਡ ਕਰੋ।', fb_mine: 'ਮੇਰੇ ਸੁਝਾਅ', fb_status_new: 'ਮਿਲ ਗਿਆ', fb_status_planned: 'ਯੋਜਨਾ ਵਿੱਚ', fb_status_done: 'ਹੋ ਗਿਆ', fb_status_closed: 'ਬੰਦ',
+  requests: 'ਬੇਨਤੀਆਂ ਅਤੇ ਛੁੱਟੀ', open_shifts: 'ਖਾਲੀ ਸ਼ਿਫਟਾਂ', no_open: 'ਹੁਣ ਕੋਈ ਖਾਲੀ ਸ਼ਿਫਟ ਨਹੀਂ।', open_n: '{n} ਖਾਲੀ', pick_up: 'ਮੈਨੂੰ ਇਹ ਸ਼ਿਫਟ ਚਾਹੀਦੀ ਹੈ',
+  pickup_sent: 'ਭੇਜ ਦਿੱਤਾ। ਤੁਹਾਡਾ ਮੈਨੇਜਰ ਪੁਸ਼ਟੀ ਕਰੇਗਾ।', my_shifts: 'ਮੇਰੀਆਂ ਅਗਲੀਆਂ ਸ਼ਿਫਟਾਂ', cant_work: 'ਨਹੀਂ ਆ ਸਕਦਾ', ask_coworker: 'ਸਾਥੀ ਨੂੰ ਪੁੱਛੋ', give_up: 'ਛੱਡ ਦਿਓ',
+  swap_hint: 'ਪਹਿਲਾਂ ਤੁਹਾਡਾ ਸਾਥੀ ਮੰਨੇਗਾ, ਫਿਰ ਮੈਨੇਜਰ ਮਨਜ਼ੂਰ ਕਰੇਗਾ।', drop_hint: 'ਮੈਨੇਜਰ ਫ਼ੈਸਲਾ ਕਰੇਗਾ। ਸ਼ਿਫਟ ਦੂਜਿਆਂ ਲਈ ਖਾਲੀ ਹੋ ਜਾਵੇਗੀ।', choose_coworker: 'ਸਾਥੀ ਚੁਣੋ',
+  send_request: 'ਬੇਨਤੀ ਭੇਜੋ', swap_sent: 'ਸਾਥੀ ਨੂੰ ਭੇਜ ਦਿੱਤਾ।', drop_sent: 'ਮੈਨੇਜਰ ਨੂੰ ਭੇਜ ਦਿੱਤਾ।', request_cancelled: 'ਬੇਨਤੀ ਰੱਦ।',
+  swap_ask: '{name} ਨੇ ਤੁਹਾਨੂੰ {when} ਨੂੰ {site} ਵਾਲੀ ਸ਼ਿਫਟ ਲੈਣ ਲਈ ਕਿਹਾ ਹੈ।', accept: 'ਮਨਜ਼ੂਰ', decline: 'ਨਾਂਹ', accepted: 'ਮਨਜ਼ੂਰ। ਤੁਹਾਡਾ ਮੈਨੇਜਰ ਪੁਸ਼ਟੀ ਕਰੇਗਾ।', declined: 'ਨਾਂਹ ਕੀਤੀ।',
+  time_off: 'ਛੁੱਟੀ', request_time_off: 'ਛੁੱਟੀ ਮੰਗੋ', toff_sent: 'ਬੇਨਤੀ ਮੈਨੇਜਰ ਨੂੰ ਭੇਜ ਦਿੱਤੀ।', vacation: 'ਛੁੱਟੀਆਂ', sick: 'ਬਿਮਾਰ', personal: 'ਨਿੱਜੀ', unpaid: 'ਬਿਨਾਂ ਤਨਖਾਹ', other: 'ਹੋਰ',
+  status_pending_peer: 'ਸਾਥੀ ਦੀ ਉਡੀਕ', status_pending: 'ਮੈਨੇਜਰ ਦੀ ਉਡੀਕ', status_approved: 'ਮਨਜ਼ੂਰ', status_rejected: 'ਨਾਮਨਜ਼ੂਰ', status_cancelled: 'ਰੱਦ',
+  availability: 'ਮੈਂ ਕਦੋਂ ਕੰਮ ਕਰ ਸਕਦਾ ਹਾਂ', avail_hint: 'ਸ਼ਡਿਊਲ ਬਣਾਉਣ ਵੇਲੇ ਮੈਨੇਜਰ ਇਹ ਦੇਖਦਾ ਹੈ।', any_time: 'ਕਿਸੇ ਵੀ ਸਮੇਂ', only_between: 'ਸਿਰਫ਼ ਇਸ ਵਿਚਕਾਰ', not_available: 'ਉਪਲਬਧ ਨਹੀਂ',
+  dow0: 'ਐਤਵਾਰ', dow1: 'ਸੋਮਵਾਰ', dow2: 'ਮੰਗਲਵਾਰ', dow3: 'ਬੁੱਧਵਾਰ', dow4: 'ਵੀਰਵਾਰ', dow5: 'ਸ਼ੁੱਕਰਵਾਰ', dow6: 'ਸ਼ਨਿੱਚਰਵਾਰ', date_hint: 'YYYY-MM-DD', time_hint: 'HH:MM',
+  crew: 'ਕਰੂ ਕਲੌਕ-ਇਨ', crew_hint: 'ਕਈ ਲੋਕਾਂ ਨੂੰ ਇੱਕੋ ਵਾਰ ਕਲੌਕ-ਇਨ ਜਾਂ ਆਊਟ ਕਰੋ।', crew_empty: 'ਹੁਣ ਤੁਹਾਡੀ ਸ਼ਿਫਟ ਵਿੱਚ ਕਲੌਕ-ਇਨ ਲਈ ਕੋਈ ਨਹੀਂ।', select_all: 'ਸਭ ਚੁਣੋ', clear: 'ਹਟਾਓ',
+  state_off: 'ਕੰਮ ’ਤੇ ਨਹੀਂ', state_working: 'ਕੰਮ ’ਤੇ', state_on_break: 'ਬ੍ਰੇਕ ’ਤੇ', crew_in: 'ਕਲੌਕ-ਇਨ ({n})', crew_out: 'ਕਲੌਕ-ਆਊਟ ({n})', crew_done: '{n} ਲੋਕਾਂ ਲਈ ਹੋ ਗਿਆ।',
+  crew_queued: 'ਨੈੱਟ ਨਹੀਂ: {n} ਲੋਕਾਂ ਲਈ ਫ਼ੋਨ ’ਤੇ ਸੰਭਾਲਿਆ। ਆਪਣੇ-ਆਪ ਭੇਜਿਆ ਜਾਵੇਗਾ।',
+  safety: 'ਸੁਰੱਖਿਆ', report_problem: 'ਸਮੱਸਿਆ ਦੱਸੋ', incident: 'ਘਟਨਾ', near_miss: 'ਹਾਦਸੇ ਤੋਂ ਬਚਾਅ', hazard: 'ਖ਼ਤਰਾ', what_happened: 'ਕੀ ਹੋਇਆ?', someone_hurt: 'ਕਿਸੇ ਨੂੰ ਸੱਟ ਲੱਗੀ',
+  injury_details: 'ਸੱਟ ਦਾ ਵੇਰਵਾ', action_taken: 'ਕੀ ਕਾਰਵਾਈ ਕੀਤੀ', add_photo: 'ਫ਼ੋਟੋ ਜੋੜੋ', take_photo: 'ਫ਼ੋਟੋ ਖਿੱਚੋ', send_report: 'ਰਿਪੋਰਟ ਭੇਜੋ', report_sent: 'ਰਿਪੋਰਟ ਭੇਜੀ ਗਈ। ਸੁਪਰਵਾਈਜ਼ਰ ਨੂੰ ਸੂਚਨਾ ਦਿੱਤੀ ਗਈ।',
+  to_sign: 'ਦਸਤਖ਼ਤ ਲਈ ਸੇਫਟੀ ਮੀਟਿੰਗਾਂ', i_attended: 'ਮੈਂ ਹਾਜ਼ਰ ਸੀ', signed: 'ਦਸਤਖ਼ਤ ਹੋ ਗਏ। ਧੰਨਵਾਦ।', my_reports: 'ਮੇਰੀਆਂ ਰਿਪੋਰਟਾਂ', no_reports: 'ਕੋਈ ਰਿਪੋਰਟ ਨਹੀਂ।', status_open: 'ਖੁੱਲ੍ਹੀ', status_closed: 'ਬੰਦ',
+};
+
+const hi: Dict = {
+  sign_in: 'साइन इन', email: 'ईमेल', password: 'पासवर्ड', forgot: 'पासवर्ड भूल गए?',
+  enter_email_first: 'पहले ऊपर अपना ईमेल लिखें, फिर “पासवर्ड भूल गए?” दबाएँ।', reset_sent: 'अगर इस ईमेल का खाता है, तो रीसेट लिंक भेज दिया गया है।',
+  invalid_login: 'ईमेल या पासवर्ड गलत है।', captcha_failed: 'सुरक्षा जाँच पूरी करें और फिर से कोशिश करें।',
+  not_employee: 'यह ऐप कर्मचारियों के लिए है। मैनेजर: app.bluecollarshift.com इस्तेमाल करें।', today: 'आज', schedule: 'शेड्यूल', hours: 'घंटे', messages: 'संदेश', more: 'और',
+  clock_in: 'क्लॉक-इन', clock_out: 'क्लॉक-आउट', start_break: 'ब्रेक शुरू', end_break: 'ब्रेक खत्म', working_since: '{time} से काम पर', on_break: 'ब्रेक पर',
+  not_working: 'आप क्लॉक-इन नहीं हैं', offline: 'नेटवर्क नहीं है — आपकी हाज़िरी इस फ़ोन पर सुरक्षित है और अपने-आप भेज दी जाएगी।', pending: '{n} भेजने बाकी',
+  needs_review: '{n} की मैनेजर जाँच बाकी', rejected: '{n} दर्ज नहीं हो सके — जानकारी के लिए दबाएँ', saved_offline: 'इस फ़ोन पर सुरक्षित। नेटवर्क आने पर भेज दिया जाएगा।',
+  synced: 'दर्ज हो गया', location_off: 'लोकेशन बंद है — बिना लोकेशन के सुरक्षित किया गया, जाँच हो सकती है।', next_shift: 'अगली शिफ्ट', no_shifts: 'कोई आने वाली शिफ्ट नहीं',
+  directions: 'रास्ता', instructions: 'निर्देश', original: 'मूल', adjusted: 'बदला गया', reason: 'कारण', by: '{name} द्वारा', dispute: 'आपत्ति',
+  dispute_hint: 'बताएँ क्या गलत है (आपके मैनेजर को सूचना जाएगी)', dispute_sent: 'आपत्ति भेजी गई।', pay: 'वेतन इतिहास', pay_note: 'कुल अनुमान। टैक्स और कटौतियाँ शामिल नहीं।',
+  no_pay: 'अभी कोई मंज़ूर वेतन अवधि नहीं।', notifications: 'सूचनाएँ', mark_all_read: 'सब पढ़ा हुआ करें', nothing_yet: 'अभी कुछ नहीं।', sync_status: 'हाज़िरी सिंक',
+  no_events: 'इस फ़ोन पर अभी कोई हाज़िरी नहीं।', recorded_offline: 'बिना नेटवर्क दर्ज', sign_out: 'साइन आउट', version: 'संस्करण {v}', type_message: 'संदेश', send: 'भेजें',
+  queued: 'कतार में — नेटवर्क आने पर भेजा जाएगा', failed: 'नहीं भेजा', last_updated: '{time} को अपडेट', retry: 'फिर से कोशिश',
+  update_required: 'जारी रखने के लिए App Store या Google Play से Blue Collar अपडेट करें। आपकी सुरक्षित हाज़िरी अपडेट के बाद भेज दी जाएगी।',
+  maintenance: 'Blue Collar का रखरखाव चल रहा है। आप फिर भी क्लॉक-इन कर सकते हैं — यह फ़ोन पर सुरक्षित होकर बाद में भेजा जाएगा।',
+  privacy: 'लोकेशन सिर्फ़ क्लॉक-इन/आउट या ब्रेक के समय इस्तेमाल होती है। Blue Collar आपको कभी पीछे से ट्रैक नहीं करता।',
+  timesheet: 'टाइमशीट', no_site: 'कोई साइट नहीं', approved: 'मंज़ूर', pending_approval: 'मंज़ूरी बाकी', pending_short: 'बाकी', clock_events: 'हाज़िरी रिकॉर्ड',
+  switch_company: 'कंपनी बदलें', no_conversations: 'अभी कोई बातचीत नहीं।', start_conversation: 'बातचीत शुरू करें', cancelled: 'रद्द', no_work: 'अभी कोई काम दर्ज नहीं।',
+  disputed: 'आपत्ति की गई', review: 'जाँच', working: 'काम पर', language: 'भाषा', save: 'सेव करें', saved: 'सेव हो गया।', cancel: 'रद्द करें', close: 'बंद करें', note: 'नोट', from: 'से', to: 'तक',
+  error_generic: 'कुछ गलत हो गया। फिर से कोशिश करें।',
+  feedback: 'सुझाव भेजें', fb_intro: 'बताएँ क्या सुधारना है, क्या गलत है, या कोई खराबी बताएँ। लिखें या आवाज़ रिकॉर्ड करें।', fb_improvement: 'सुझाव', fb_complaint: 'शिकायत', fb_bug: 'खराबी',
+  fb_placeholder: 'क्या हुआ, या किस चीज़ से आपका काम आसान होगा?', fb_record: 'आवाज़ रिकॉर्ड करें', fb_recording: 'रिकॉर्ड हो रहा… {s} सेकंड (अधिकतम {max})', fb_stop: 'रोकें', fb_play: 'सुनें',
+  fb_delete: 'रिकॉर्डिंग हटाएँ', fb_screenshot: 'स्क्रीनशॉट जोड़ें', fb_remove: 'तस्वीर हटाएँ', fb_send: 'भेजें', fb_thanks: 'धन्यवाद! हमारी टीम हर संदेश पढ़ती है।',
+  fb_mic_denied: 'माइक बंद है। सेटिंग्स में चालू करें, या संदेश लिखें।', fb_upload_failed: 'संदेश भेज दिया, पर फ़ाइल अपलोड नहीं हुई।', fb_need_text: 'संदेश लिखें या आवाज़ रिकॉर्ड करें।', fb_mine: 'मेरे सुझाव', fb_status_new: 'मिल गया', fb_status_planned: 'योजना में', fb_status_done: 'हो गया', fb_status_closed: 'बंद',
+  requests: 'अनुरोध और छुट्टी', open_shifts: 'खाली शिफ्टें', no_open: 'अभी कोई खाली शिफ्ट नहीं।', open_n: '{n} खाली', pick_up: 'मुझे यह शिफ्ट चाहिए',
+  pickup_sent: 'भेज दिया। आपका मैनेजर पुष्टि करेगा।', my_shifts: 'मेरी अगली शिफ्टें', cant_work: 'नहीं आ सकता', ask_coworker: 'साथी से पूछें', give_up: 'छोड़ दें',
+  swap_hint: 'पहले आपका साथी मानेगा, फिर मैनेजर मंज़ूर करेगा।', drop_hint: 'मैनेजर फ़ैसला करेगा। शिफ्ट दूसरों के लिए खाली हो जाएगी।', choose_coworker: 'साथी चुनें',
+  send_request: 'अनुरोध भेजें', swap_sent: 'साथी को भेज दिया।', drop_sent: 'मैनेजर को भेज दिया।', request_cancelled: 'अनुरोध रद्द।',
+  swap_ask: '{name} ने आपसे {when} को {site} वाली शिफ्ट लेने को कहा है।', accept: 'मंज़ूर', decline: 'मना करें', accepted: 'मंज़ूर। आपका मैनेजर पुष्टि करेगा।', declined: 'मना किया।',
+  time_off: 'छुट्टी', request_time_off: 'छुट्टी माँगें', toff_sent: 'अनुरोध मैनेजर को भेज दिया।', vacation: 'छुट्टियाँ', sick: 'बीमार', personal: 'निजी', unpaid: 'बिना वेतन', other: 'अन्य',
+  status_pending_peer: 'साथी का इंतज़ार', status_pending: 'मैनेजर का इंतज़ार', status_approved: 'मंज़ूर', status_rejected: 'अस्वीकार', status_cancelled: 'रद्द',
+  availability: 'मैं कब काम कर सकता हूँ', avail_hint: 'शेड्यूल बनाते समय मैनेजर यह देखता है।', any_time: 'किसी भी समय', only_between: 'सिर्फ़ इसके बीच', not_available: 'उपलब्ध नहीं',
+  dow0: 'रविवार', dow1: 'सोमवार', dow2: 'मंगलवार', dow3: 'बुधवार', dow4: 'गुरुवार', dow5: 'शुक्रवार', dow6: 'शनिवार', date_hint: 'YYYY-MM-DD', time_hint: 'HH:MM',
+  crew: 'क्रू क्लॉक-इन', crew_hint: 'कई लोगों को एक साथ क्लॉक-इन या आउट करें।', crew_empty: 'अभी आपकी शिफ्ट में क्लॉक-इन के लिए कोई नहीं।', select_all: 'सब चुनें', clear: 'हटाएँ',
+  state_off: 'काम पर नहीं', state_working: 'काम पर', state_on_break: 'ब्रेक पर', crew_in: 'क्लॉक-इन ({n})', crew_out: 'क्लॉक-आउट ({n})', crew_done: '{n} लोगों के लिए हो गया।',
+  crew_queued: 'नेटवर्क नहीं: {n} लोगों के लिए फ़ोन पर सुरक्षित। अपने-आप भेजा जाएगा।',
+  safety: 'सुरक्षा', report_problem: 'समस्या बताएँ', incident: 'घटना', near_miss: 'बाल-बाल बचे', hazard: 'ख़तरा', what_happened: 'क्या हुआ?', someone_hurt: 'किसी को चोट लगी',
+  injury_details: 'चोट का विवरण', action_taken: 'क्या कार्रवाई की', add_photo: 'फ़ोटो जोड़ें', take_photo: 'फ़ोटो खींचें', send_report: 'रिपोर्ट भेजें', report_sent: 'रिपोर्ट भेजी गई। सुपरवाइज़र को सूचना दी गई।',
+  to_sign: 'हस्ताक्षर के लिए सेफ़्टी मीटिंग', i_attended: 'मैं मौजूद था', signed: 'हस्ताक्षर हो गए। धन्यवाद।', my_reports: 'मेरी रिपोर्टें', no_reports: 'कोई रिपोर्ट नहीं।', status_open: 'खुली', status_closed: 'बंद',
+};
+
+const gu: Dict = {
+  sign_in: 'સાઇન ઇન', email: 'ઇમેઇલ', password: 'પાસવર્ડ', forgot: 'પાસવર્ડ ભૂલી ગયા?',
+  enter_email_first: 'પહેલાં ઉપર તમારો ઇમેઇલ લખો, પછી “પાસવર્ડ ભૂલી ગયા?” દબાવો.', reset_sent: 'જો આ ઇમેઇલનું એકાઉન્ટ હોય, તો રીસેટ લિંક મોકલી દીધી છે.',
+  invalid_login: 'ઇમેઇલ અથવા પાસવર્ડ ખોટો છે.', captcha_failed: 'સુરક્ષા તપાસ પૂરી કરો અને ફરી પ્રયાસ કરો.',
+  not_employee: 'આ એપ કર્મચારીઓ માટે છે. મેનેજર: app.bluecollarshift.com વાપરો.', today: 'આજે', schedule: 'શેડ્યૂલ', hours: 'કલાકો', messages: 'સંદેશા', more: 'વધુ',
+  clock_in: 'ક્લોક-ઇન', clock_out: 'ક્લોક-આઉટ', start_break: 'બ્રેક શરૂ', end_break: 'બ્રેક પૂરો', working_since: '{time} થી કામ પર', on_break: 'બ્રેક પર',
+  not_working: 'તમે ક્લોક-ઇન નથી', offline: 'નેટવર્ક નથી — તમારી હાજરી આ ફોન પર સાચવી છે અને આપમેળે મોકલાશે.', pending: '{n} મોકલવાના બાકી',
+  needs_review: '{n} ની મેનેજર તપાસ બાકી', rejected: '{n} નોંધાઈ શક્યા નહીં — વિગત માટે દબાવો', saved_offline: 'આ ફોન પર સાચવ્યું. નેટવર્ક આવે ત્યારે મોકલાશે.',
+  synced: 'નોંધાઈ ગયું', location_off: 'લોકેશન બંધ છે — લોકેશન વગર સાચવ્યું, તપાસ થઈ શકે છે.', next_shift: 'આગલી શિફ્ટ', no_shifts: 'કોઈ આવનારી શિફ્ટ નથી',
+  directions: 'રસ્તો', instructions: 'સૂચનાઓ', original: 'મૂળ', adjusted: 'બદલાયેલ', reason: 'કારણ', by: '{name} દ્વારા', dispute: 'વાંધો',
+  dispute_hint: 'શું ખોટું છે તે જણાવો (તમારા મેનેજરને જાણ થશે)', dispute_sent: 'વાંધો મોકલ્યો.', pay: 'પગાર ઇતિહાસ', pay_note: 'કુલ અંદાજ. ટેક્સ અને કપાત શામેલ નથી.',
+  no_pay: 'હજુ કોઈ મંજૂર પગાર સમયગાળો નથી.', notifications: 'સૂચનાઓ', mark_all_read: 'બધું વાંચેલું કરો', nothing_yet: 'હજુ કંઈ નથી.', sync_status: 'હાજરી સિંક',
+  no_events: 'આ ફોન પર હજુ કોઈ હાજરી નથી.', recorded_offline: 'નેટવર્ક વગર નોંધાયું', sign_out: 'સાઇન આઉટ', version: 'આવૃત્તિ {v}', type_message: 'સંદેશ', send: 'મોકલો',
+  queued: 'કતારમાં — નેટવર્ક આવે ત્યારે મોકલાશે', failed: 'મોકલાયું નથી', last_updated: '{time} એ અપડેટ', retry: 'ફરી પ્રયાસ',
+  update_required: 'ચાલુ રાખવા App Store અથવા Google Play પરથી Blue Collar અપડેટ કરો. તમારી સાચવેલી હાજરી અપડેટ પછી મોકલાશે.',
+  maintenance: 'Blue Collar નું સમારકામ ચાલે છે. તમે હજુ પણ ક્લોક-ઇન કરી શકો છો — તે ફોન પર સાચવીને પછી મોકલાશે.',
+  privacy: 'લોકેશન ફક્ત ક્લોક-ઇન/આઉટ કે બ્રેક વખતે વપરાય છે. Blue Collar તમને ક્યારેય પાછળથી ટ્રેક કરતું નથી.',
+  timesheet: 'ટાઇમશીટ', no_site: 'કોઈ સાઇટ નથી', approved: 'મંજૂર', pending_approval: 'મંજૂરી બાકી', pending_short: 'બાકી', clock_events: 'હાજરી રેકોર્ડ',
+  switch_company: 'કંપની બદલો', no_conversations: 'હજુ કોઈ વાતચીત નથી.', start_conversation: 'વાતચીત શરૂ કરો', cancelled: 'રદ', no_work: 'હજુ કોઈ કામ નોંધાયું નથી.',
+  disputed: 'વાંધો ઉઠાવ્યો', review: 'તપાસ', working: 'કામ પર', language: 'ભાષા', save: 'સાચવો', saved: 'સાચવ્યું.', cancel: 'રદ કરો', close: 'બંધ કરો', note: 'નોંધ', from: 'થી', to: 'સુધી',
+  error_generic: 'કંઈક ખોટું થયું. ફરી પ્રયાસ કરો.',
+  feedback: 'સૂચન મોકલો', fb_intro: 'શું સુધારવું, શું ખોટું છે, અથવા કોઈ ખામી જણાવો. લખો કે અવાજ રેકોર્ડ કરો.', fb_improvement: 'સૂચન', fb_complaint: 'ફરિયાદ', fb_bug: 'ખામી',
+  fb_placeholder: 'શું થયું, અથવા શેનાથી તમારું કામ સરળ થશે?', fb_record: 'અવાજ રેકોર્ડ કરો', fb_recording: 'રેકોર્ડ થાય છે… {s} સેકન્ડ (વધુમાં વધુ {max})', fb_stop: 'રોકો', fb_play: 'સાંભળો',
+  fb_delete: 'રેકોર્ડિંગ કાઢી નાખો', fb_screenshot: 'સ્ક્રીનશૉટ ઉમેરો', fb_remove: 'ચિત્ર દૂર કરો', fb_send: 'મોકલો', fb_thanks: 'આભાર! અમારી ટીમ દરેક સંદેશ વાંચે છે.',
+  fb_mic_denied: 'માઇક બંધ છે. સેટિંગ્સમાં ચાલુ કરો, અથવા સંદેશ લખો.', fb_upload_failed: 'સંદેશ મોકલ્યો, પણ ફાઇલ અપલોડ ન થઈ.', fb_need_text: 'સંદેશ લખો અથવા અવાજ રેકોર્ડ કરો.', fb_mine: 'મારાં સૂચનો', fb_status_new: 'મળી ગયું', fb_status_planned: 'આયોજનમાં', fb_status_done: 'થઈ ગયું', fb_status_closed: 'બંધ',
+  requests: 'વિનંતીઓ અને રજા', open_shifts: 'ખાલી શિફ્ટો', no_open: 'હમણાં કોઈ ખાલી શિફ્ટ નથી.', open_n: '{n} ખાલી', pick_up: 'મારે આ શિફ્ટ જોઈએ છે',
+  pickup_sent: 'મોકલ્યું. તમારા મેનેજર પુષ્ટિ કરશે.', my_shifts: 'મારી આગલી શિફ્ટો', cant_work: 'નહીં આવી શકું', ask_coworker: 'સાથીને પૂછો', give_up: 'છોડી દો',
+  swap_hint: 'પહેલાં તમારો સાથી સ્વીકારશે, પછી મેનેજર મંજૂર કરશે.', drop_hint: 'મેનેજર નિર્ણય લેશે. શિફ્ટ બીજા માટે ખાલી થશે.', choose_coworker: 'સાથી પસંદ કરો',
+  send_request: 'વિનંતી મોકલો', swap_sent: 'સાથીને મોકલ્યું.', drop_sent: 'મેનેજરને મોકલ્યું.', request_cancelled: 'વિનંતી રદ.',
+  swap_ask: '{name} એ તમને {when} ના રોજ {site} ની શિફ્ટ લેવા કહ્યું છે.', accept: 'સ્વીકારો', decline: 'ના પાડો', accepted: 'સ્વીકાર્યું. તમારા મેનેજર પુષ્ટિ કરશે.', declined: 'ના પાડી.',
+  time_off: 'રજા', request_time_off: 'રજા માંગો', toff_sent: 'વિનંતી મેનેજરને મોકલી.', vacation: 'વેકેશન', sick: 'બીમાર', personal: 'અંગત', unpaid: 'પગાર વગર', other: 'અન્ય',
+  status_pending_peer: 'સાથીની રાહ', status_pending: 'મેનેજરની રાહ', status_approved: 'મંજૂર', status_rejected: 'નામંજૂર', status_cancelled: 'રદ',
+  availability: 'હું ક્યારે કામ કરી શકું', avail_hint: 'શેડ્યૂલ બનાવતી વખતે મેનેજર આ જુએ છે.', any_time: 'કોઈ પણ સમયે', only_between: 'ફક્ત આ વચ્ચે', not_available: 'ઉપલબ્ધ નથી',
+  dow0: 'રવિવાર', dow1: 'સોમવાર', dow2: 'મંગળવાર', dow3: 'બુધવાર', dow4: 'ગુરુવાર', dow5: 'શુક્રવાર', dow6: 'શનિવાર', date_hint: 'YYYY-MM-DD', time_hint: 'HH:MM',
+  crew: 'ક્રૂ ક્લોક-ઇન', crew_hint: 'ઘણા લોકોને એકસાથે ક્લોક-ઇન કે આઉટ કરો.', crew_empty: 'હમણાં તમારી શિફ્ટમાં ક્લોક-ઇન માટે કોઈ નથી.', select_all: 'બધા પસંદ કરો', clear: 'સાફ કરો',
+  state_off: 'કામ પર નથી', state_working: 'કામ પર', state_on_break: 'બ્રેક પર', crew_in: 'ક્લોક-ઇન ({n})', crew_out: 'ક્લોક-આઉટ ({n})', crew_done: '{n} લોકો માટે થઈ ગયું.',
+  crew_queued: 'નેટવર્ક નથી: {n} લોકો માટે ફોન પર સાચવ્યું. આપમેળે મોકલાશે.',
+  safety: 'સલામતી', report_problem: 'સમસ્યા જણાવો', incident: 'ઘટના', near_miss: 'અકસ્માત ટળ્યો', hazard: 'જોખમ', what_happened: 'શું થયું?', someone_hurt: 'કોઈને ઈજા થઈ',
+  injury_details: 'ઈજાની વિગત', action_taken: 'શું પગલાં લીધાં', add_photo: 'ફોટો ઉમેરો', take_photo: 'ફોટો પાડો', send_report: 'રિપોર્ટ મોકલો', report_sent: 'રિપોર્ટ મોકલ્યો. સુપરવાઇઝરને જાણ કરી.',
+  to_sign: 'સહી માટે સેફ્ટી મીટિંગ', i_attended: 'હું હાજર હતો', signed: 'સહી થઈ ગઈ. આભાર.', my_reports: 'મારા રિપોર્ટ', no_reports: 'કોઈ રિપોર્ટ નથી.', status_open: 'ખુલ્લો', status_closed: 'બંધ',
+};
+
+export const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'es-MX', name: 'Español (México)' },
+  { code: 'fr-CA', name: 'Français (Canada)' },
+  { code: 'pa', name: 'ਪੰਜਾਬੀ' },
+  { code: 'hi', name: 'हिन्दी' },
+  { code: 'gu', name: 'ગુજરાતી' },
+] as const;
+export type LocaleCode = (typeof LANGUAGES)[number]['code'];
+
+const DICTS: Record<LocaleCode, Dict> = { en, 'es-MX': es, 'fr-CA': fr, pa, hi, gu };
+let current: LocaleCode = 'en';
+const KEY = 'bc.locale';
+
+export function normalizeLocale(l: string | null | undefined): LocaleCode {
+  if (!l) return 'en';
+  const exact = LANGUAGES.find((x) => x.code.toLowerCase() === l.toLowerCase());
+  if (exact) return exact.code;
+  const base = l.split('-')[0]?.toLowerCase();
+  if (base === 'es') return 'es-MX';
+  if (base === 'fr') return 'fr-CA';
+  return LANGUAGES.find((x) => x.code === base)?.code ?? 'en';
+}
+
+export function getLocale() {
+  return current;
+}
+export function setLocaleNow(l: string) {
+  current = normalizeLocale(l);
+}
+/** Saved choice, else the phone's language. */
+export async function loadSavedLocale(): Promise<LocaleCode> {
+  const saved = await SecureStore.getItemAsync(KEY).catch(() => null);
+  if (saved) return normalizeLocale(saved);
+  try {
+    return normalizeLocale(Intl.DateTimeFormat().resolvedOptions().locale);
+  } catch {
+    return 'en';
+  }
+}
+export async function saveLocale(l: string) {
+  current = normalizeLocale(l);
+  await SecureStore.setItemAsync(KEY, current).catch(() => undefined);
+}
+export async function hasSavedLocale() {
+  return !!(await SecureStore.getItemAsync(KEY).catch(() => null));
+}
+
+/** Intl locale for dates and numbers. */
+export function intlLocale() {
+  return current === 'pa' ? 'pa-Guru-IN' : current === 'hi' ? 'hi-IN' : current === 'gu' ? 'gu-IN' : current === 'en' ? 'en-CA' : current;
+}
+
 export function t(key: Key, vars?: Record<string, string | number>) {
-  let s: string = en[key];
+  let s: string = DICTS[current][key] ?? en[key];
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
   return s;
 }
+
+export const ALL_DICTS = DICTS;

@@ -41,18 +41,18 @@ export default function Hours() {
       <Muted>Last 31 days · {fmtMinutes(total)} paid</Muted>
       {offline && <Banner tone="warning" text={t('offline')} />}
       <Card>
-        {!items.length && <Muted>No work recorded yet.</Muted>}
+        {!items.length && <Muted>{t('no_work')}</Muted>}
         {items.map((s) => (
           <Row
             key={s.id}
             onPress={() => router.push({ pathname: '/timesheet/[id]', params: { id: s.id } })}
             title={`${fmtDay(s.effectiveStart)} · ${fmtTime(s.effectiveStart)}–${fmtTime(s.effectiveEnd)}`}
-            subtitle={`${s.siteName ?? 'No site'} · ${fmtMinutes(s.paidMinutes)}${s.adjusted ? ' · adjusted' : ''}`}
+            subtitle={`${s.siteName ?? t('no_site')} · ${fmtMinutes(s.paidMinutes)}${s.adjusted ? ' · adjusted' : ''}`}
             right={
-              s.openDisputes ? <Badge tone="warning" text="Disputed" /> :
-              s.status === 'needs_review' ? <Badge tone="warning" text="Review" /> :
-              s.approvalStatus === 'approved' ? <Badge tone="success" text="Approved" /> :
-              s.status === 'open' ? <Badge tone="info" text="Working" /> : <Badge text="Pending" />
+              s.openDisputes ? <Badge tone="warning" text={t('disputed')} /> :
+              s.status === 'needs_review' ? <Badge tone="warning" text={t('review')} /> :
+              s.approvalStatus === 'approved' ? <Badge tone="success" text={t('approved')} /> :
+              s.status === 'open' ? <Badge tone="info" text={t('working')} /> : <Badge text={t('pending_short')} />
             }
           />
         ))}

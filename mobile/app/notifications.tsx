@@ -1,3 +1,4 @@
+import { t } from '../src/i18n';
 import { useCallback, useEffect, useState } from 'react';
 import type { Notification } from '@bluecollar/shared';
 import { api } from '../src/lib/api';
@@ -23,9 +24,9 @@ export default function Notifications() {
   if (!items) return <Screen><Loading /></Screen>;
   return (
     <Screen onRefresh={() => void load()}>
-      {items.some((n) => !n.readAt) && <Button kind="secondary" title="Mark all read" onPress={() => void api('/notifications/read-all', { method: 'POST' }).then(load)} />}
+      {items.some((n) => !n.readAt) && <Button kind="secondary" title={t('mark_all_read')} onPress={() => void api('/notifications/read-all', { method: 'POST' }).then(load)} />}
       <Card>
-        {!items.length && <Muted>Nothing yet.</Muted>}
+        {!items.length && <Muted>{t('nothing_yet')}</Muted>}
         {items.map((n) => (
           <Row
             key={n.id}

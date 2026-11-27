@@ -22,12 +22,12 @@ export default function SyncScreen() {
   return (
     <Screen onRefresh={() => void load()}>
       <Button title={t('retry')} loading={busy} onPress={async () => { setBusy(true); await engine.retryNow(); await load(); setBusy(false); }} />
-      {!items.length && <Muted>No clock events on this phone yet.</Muted>}
+      {!items.length && <Muted>{t('no_events')}</Muted>}
       {items.map((e) => (
         <Card key={e.id}>
           <Text style={{ fontWeight: '700' }}>{e.type.replace('_', ' ')} · {fmtDateTime(e.deviceTime)}</Text>
           <Badge tone={tone[e.state]} text={e.state.replace('_', ' ')} />
-          {e.recordedOffline && <Muted>Recorded offline</Muted>}
+          {e.recordedOffline && <Muted>{t('recorded_offline')}</Muted>}
           {e.flags.length > 0 && <Muted>Flags: {e.flags.join(', ')}</Muted>}
           {e.lastError && <Muted>{e.lastError}</Muted>}
           {e.attempts > 0 && e.state === 'pending' && <Muted>Attempts: {e.attempts}</Muted>}

@@ -30,7 +30,7 @@ const config: ExpoConfig = {
   android: {
     package: 'com.bluecollarshift.app',
     adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#FFFFFF' },
-    permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS'],
+    permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS', 'RECORD_AUDIO', 'CAMERA'],
     blockedPermissions: ['ACCESS_BACKGROUND_LOCATION'],
     config: { googleMaps: { apiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY } },
   },
@@ -41,6 +41,10 @@ const config: ExpoConfig = {
     'expo-background-task',
     ['expo-location', { locationWhenInUsePermission: 'Blue Collar uses your location only when you clock in, clock out or take a break, to confirm you are at the job site.', isAndroidBackgroundLocationEnabled: false, isIosBackgroundLocationEnabled: false }],
     ['expo-notifications', { icon: './assets/notification-icon.png', color: '#016B93' }],
+    // Microphone: only while recording a voice note for feedback (never in the background).
+    ['expo-audio', { microphonePermission: 'Blue Collar uses the microphone only when you record a voice note to send feedback.', enableBackgroundRecording: false }],
+    // Photos/camera: only when you attach a screenshot or a safety photo.
+    ['expo-image-picker', { photosPermission: 'Blue Collar uses your photos only when you attach a screenshot or a safety photo.', cameraPermission: 'Blue Collar uses the camera only when you take a safety photo.', microphonePermission: false }],
     ['expo-splash-screen', { image: './assets/logo.png', imageWidth: 220, backgroundColor: '#FFFFFF' }],
   ],
   experiments: { typedRoutes: true },

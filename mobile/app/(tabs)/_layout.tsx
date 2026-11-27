@@ -8,7 +8,7 @@ import { Banner, Screen } from '../../src/ui';
 const icon = (glyph: string) => ({ color }: { color: ColorValue }) => <Text style={{ fontSize: 20, color }}>{glyph}</Text>;
 
 export default function TabsLayout() {
-  const { session, me, membership, signOut, updateRequired } = useSession();
+  const { session, me, membership, signOut, updateRequired, locale } = useSession();
   if (!session || !me) return <Redirect href="/login" />;
   if (updateRequired)
     return (
@@ -23,7 +23,7 @@ export default function TabsLayout() {
       </Screen>
     );
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: theme.primary, headerShown: false, tabBarLabelStyle: { fontSize: 12, fontWeight: '600' } }}>
+    <Tabs key={locale} screenOptions={{ tabBarActiveTintColor: theme.primary, headerShown: false, tabBarLabelStyle: { fontSize: 12, fontWeight: '600' } }}>
       <Tabs.Screen name="index" options={{ title: t('today'), tabBarIcon: icon('⏱') }} />
       <Tabs.Screen name="schedule" options={{ title: t('schedule'), tabBarIcon: icon('📅') }} />
       <Tabs.Screen name="hours" options={{ title: t('hours'), tabBarIcon: icon('🧾') }} />
